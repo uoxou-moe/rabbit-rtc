@@ -28,15 +28,17 @@ cd rabbit-rtc
 3. `.env` や設定ファイルが必要になった場合は `frontend/.env.example` を整備してください。
 
 ### バックエンド
-1. `backend/` ディレクトリを作成し、Go モジュールを初期化する予定です。
+1. `backend/` には Go モジュールが初期化済みです。ヘルスチェックエンドポイントを備えた HTTP サーバを `cmd/server` で提供しています。
    ```bash
+   # テスト実行
    cd backend
-   go mod init github.com/uoxou-moe/rabbit-rtc/backend
-   go get
+   go test ./...
+
+   # サーバ起動
    go run ./cmd/server
    ```
-2. WebSocket ベースのシグナリングサーバと WebRTC 処理（`pion/webrtc` を想定）を実装予定。
-3. 設定値は `backend/config` 以下に YAML/JSON で管理する方針を検討中です。
+2. `PORT` 環境変数を設定するとリッスンポートを変更できます（デフォルトは 8080）。ヘルスチェックは `GET /healthz` で確認できます。
+3. 将来的に WebSocket シグナリングと WebRTC 処理（例: `pion/webrtc`）を追加予定です。
 
 ### 開発環境のホットリロード
 - フロントエンドは Vite、バックエンドは `air` などのホットリロードツール利用を検討。
