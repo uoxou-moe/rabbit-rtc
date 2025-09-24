@@ -16,3 +16,15 @@
 - name: technical
   color: 60c6c8
   description: 技術的負債の解消や内部タスクのラベル
+- name: phase:0
+  color: bfd4f2
+  description: フェーズ0（プロジェクト基盤）のラベル
+- name: phase:1
+  color: c0e6c9
+  description: フェーズ1（MVP）のラベル
+- name: phase:2
+  color: f5c6ff
+  description: フェーズ2（DX/運用拡張）のラベル
+- name: backlog
+  color: cfd3d7
+  description: バックログ項目のラベル
