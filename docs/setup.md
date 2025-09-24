@@ -43,7 +43,7 @@ cd rabbit-rtc
 - Docker Compose による統合開発環境は必要に応じて別途整備。
 
 ## テスト
-- フロントエンド: Vitest と React Testing Library を採用。
+- フロントエンド: Vitest と React Testing Library を導入予定。
 - バックエンド: Go 標準の `testing` パッケージでユニットテストを実施。
 
 ## デプロイ（Vercel + Fly.io）
