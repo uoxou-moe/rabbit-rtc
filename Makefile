@@ -1,6 +1,6 @@
 GO ?= go
 GOFMT ?= gofmt
-GOFILES := $(shell find backend -name '*.go' -not -path '*/vendor/*')
+GOFIND := find backend -name '*.go' -not -path '*/vendor/*'
 
 .PHONY: backend/run backend/build backend/test backend/fmt backend/lint
 
@@ -14,10 +14,20 @@ backend/test:
 	cd backend && $(GO) test ./...
 
 backend/fmt:
-	$(GOFMT) -w $(GOFILES)
+	@files="$$($(GOFIND))"; \
+	if [ -z "$$files" ]; then \
+		echo "No Go files to format."; \
+		exit 0; \
+	fi; \
+	$(GOFMT) -w $$files
 
 backend/lint:
-	@unformatted=$(shell $(GOFMT) -l $(GOFILES)); \
+	@files="$$($(GOFIND))"; \
+	if [ -z "$$files" ]; then \
+		echo "No Go files to lint."; \
+		exit 0; \
+	fi; \
+	unformatted="$$($(GOFMT) -l $$files)"; \
 	if [ -n "$$unformatted" ]; then \
 		echo "gofmt needed on:"; \
 		echo "$$unformatted"; \
