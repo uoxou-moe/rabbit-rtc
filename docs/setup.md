@@ -3,7 +3,7 @@
 現時点ではリポジトリに実装コードはまだ含まれていませんが、開発を開始する際の前提条件とセットアップ手順のドラフトをまとめています。実装が進み次第、内容を更新してください。
 
 ## 前提条件
-- Node.js 20.x（LTS）
+- Node.js 20.19 以降（LTS）
 - npm 10.x もしくは pnpm/yarn 等のパッケージマネージャ
 - Go 1.22 以降
 - Git、Make（任意）
@@ -16,12 +16,14 @@ cd rabbit-rtc
 ```
 
 ### フロントエンド
-1. `frontend/` ディレクトリを作成し、React + Vite などの足場を構築する予定です。
-2. 依存パッケージ導入例：
+1. `frontend/` は React + Vite（TypeScript テンプレート）で初期化済みです。
+2. 初回セットアップ:
    ```bash
    cd frontend
    npm install
    npm run dev
+   npm run build
+   npm run lint
    ```
 3. `.env` や設定ファイルが必要になった場合は `frontend/.env.example` を整備してください。
 

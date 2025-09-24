@@ -20,10 +20,23 @@
 ## 環境セットアップ（概要）
 詳細な手順は `docs/setup.md` を参照してください。現時点の前提は以下の通りです。
 
-1. Node.js 20 系（もしくはそれに準ずる LTS）をインストール。
+1. Node.js 20.19 以降（もしくはそれに準ずる LTS）をインストール。
 2. Go 1.22 以降をインストール。
 3. リポジトリをクローン後、フロントエンド・バックエンドの依存関係を導入。
 4. 開発サーバやバックエンドサーバを個別に起動し、WebRTC接続を確認。
+
+## フロントエンド開発 (React + Vite)
+開発に必要なコマンドは以下の通りです。
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+```
+
+開発サーバは `npm run dev` で起動し、[http://localhost:5173](http://localhost:5173) でアクセスできます。
 
 ## ドキュメント
 - `docs/architecture.md` : システム構成と通信フロー、レイテンシ要件。
