@@ -25,31 +25,32 @@
 3. リポジトリをクローン後、フロントエンド・バックエンドの依存関係を導入。
 4. 開発サーバやバックエンドサーバを個別に起動し、WebRTC接続を確認。
 
-## フロントエンド開発 (React + Vite)
-開発に必要なコマンドは以下の通りです。
+## 開発コマンド一覧
+プロジェクトルートで `make` コマンドを実行すると、よく使う開発フローをまとめて呼び出せます。
 
 ```bash
-cd frontend
-npm install
-npm run dev
-npm run build
-npm run lint
+make install       # フロントエンド依存関係をインストール
+make dev           # フロントエンド開発サーバを起動
+make build         # フロントエンド/バックエンドをビルド
+make test          # フロントエンド（存在すれば）とバックエンドのテスト
+make lint          # ESLint と gofmt チェック
+make lint-fix      # ESLint --fix + gofmt で整形
+make format        # Prettier チェック + gofmt チェック
+make format-fix    # Prettier --write + gofmt で整形
+
+# 個別ターゲット
+make frontend/dev  # npm run dev
+make backend/run   # Go サーバ起動 (http://localhost:8080)
 ```
 
-開発サーバは `npm run dev` で起動し、[http://localhost:5173](http://localhost:5173) でアクセスできます。
+## フロントエンド開発 (React + Vite)
+`make dev` で開発サーバが起動し、[http://localhost:5173](http://localhost:5173) からアクセスできます。
+CI と同じチェックは `make lint` / `make format` / `make test` で再現できます。
 
 ## バックエンド開発 (Go)
-`Makefile` を利用すると Go サーバのビルドや起動が簡単です。
+ヘルスチェックエンドポイント付きの HTTP サーバを `make backend/run` で起動できます。環境変数 `PORT` でポート指定 (`8080` がデフォルト)、ヘルスチェックは `GET /healthz` で確認します。
 
 ![Lint Status](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/lint.yml/badge.svg)
-
-```bash
-make backend/run   # サーバ起動 (デフォルトは http://localhost:8080)
-make backend/build # バイナリビルド
-make backend/test  # テスト実行
-```
-
-環境変数 `PORT` を指定するとリッスンポートを変更できます。ヘルスチェックは `GET /healthz` にアクセスしてください。
 
 ## ドキュメント
 - `docs/architecture.md` : システム構成と通信フロー、レイテンシ要件。
