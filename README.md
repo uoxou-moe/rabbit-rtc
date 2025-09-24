@@ -38,6 +38,17 @@ npm run lint
 
 開発サーバは `npm run dev` で起動し、[http://localhost:5173](http://localhost:5173) でアクセスできます。
 
+## バックエンド開発 (Go)
+`Makefile` を利用すると Go サーバのビルドや起動が簡単です。
+
+```bash
+make backend/run   # サーバ起動 (デフォルトは http://localhost:8080)
+make backend/build # バイナリビルド
+make backend/test  # テスト実行
+```
+
+環境変数 `PORT` を指定するとリッスンポートを変更できます。ヘルスチェックは `GET /healthz` にアクセスしてください。
+
 ## ドキュメント
 - `docs/architecture.md` : システム構成と通信フロー、レイテンシ要件。
 - `docs/setup.md` : 開発環境の構築手順と起動方法。
