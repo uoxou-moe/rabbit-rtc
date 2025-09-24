@@ -41,6 +41,8 @@ npm run lint
 ## バックエンド開発 (Go)
 `Makefile` を利用すると Go サーバのビルドや起動が簡単です。
 
+![Lint Status](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/lint.yml/badge.svg)
+
 ```bash
 make backend/run   # サーバ起動 (デフォルトは http://localhost:8080)
 make backend/build # バイナリビルド
