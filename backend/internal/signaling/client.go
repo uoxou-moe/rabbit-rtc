@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -44,6 +44,16 @@ func (c *Client) run(ctx context.Context) {
 
 	c.conn.SetReadLimit(maxMessageBytes)
 
+	go func() {
+		<-ctx.Done()
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context canceled"),
+			time.Now().Add(writeTimeout),
+		)
+		_ = c.conn.Close()
+	}()
+
 	go c.writeLoop(ctx)
 	c.readLoop(ctx)
 }
@@ -52,11 +62,11 @@ func (c *Client) readLoop(ctx context.Context) {
 	defer func() {
 		c.hub.unregister(ctx, c)
 		close(c.send)
-		_ = c.conn.Close(websocket.StatusNormalClosure, "closing")
+		_ = c.conn.Close()
 	}()
 
 	for {
-		msgType, data, err := c.conn.Read(ctx)
+		msgType, data, err := c.conn.ReadMessage()
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
 				c.logger.DebugContext(ctx, "read loop ended", "err", err)
@@ -64,7 +74,7 @@ func (c *Client) readLoop(ctx context.Context) {
 			return
 		}
 
-		if msgType != websocket.MessageText {
+		if msgType != websocket.TextMessage {
 			c.sendError("only text messages are supported")
 			continue
 		}
@@ -94,10 +104,12 @@ func (c *Client) writeLoop(ctx context.Context) {
 				return
 			}
 
-			writeCtx, cancel := context.WithTimeout(ctx, writeTimeout)
-			err := c.conn.Write(writeCtx, websocket.MessageText, data)
-			cancel()
-			if err != nil {
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+				c.logger.DebugContext(ctx, "failed to set write deadline", "err", err)
+				return
+			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
 				c.logger.DebugContext(ctx, "write failed", "err", err)
 				return
 			}

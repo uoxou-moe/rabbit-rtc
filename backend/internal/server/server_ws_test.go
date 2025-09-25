@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/gorilla/websocket"
 )
 
 func TestWebSocketRequiresQueryParams(t *testing.T) {
@@ -43,10 +43,10 @@ func TestWebSocketSignalRouting(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	alice := dialWebSocket(t, srv.URL, "room1", "alice")
-	defer alice.Close(websocket.StatusNormalClosure, "bye")
+	defer closeConn(t, alice)
 
 	bob := dialWebSocket(t, srv.URL, "room1", "bob")
-	defer bob.Close(websocket.StatusNormalClosure, "bye")
+	defer closeConn(t, bob)
 
 	payload := map[string]string{"sdp": "dummy-offer"}
 	msg := map[string]interface{}{
@@ -57,12 +57,17 @@ func TestWebSocketSignalRouting(t *testing.T) {
 
 	writeJSON(t, alice, msg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	if err := bob.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("failed to set read deadline: %v", err)
+	}
 
-	_, data, err := bob.Read(ctx)
+	msgType, data, err := bob.ReadMessage()
 	if err != nil {
 		t.Fatalf("bob failed to read message: %v", err)
+	}
+
+	if msgType != websocket.TextMessage {
+		t.Fatalf("expected text message, got %d", msgType)
 	}
 
 	var received map[string]interface{}
@@ -88,7 +93,7 @@ func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	alice := dialWebSocket(t, srv.URL, "room1", "alice")
-	defer alice.Close(websocket.StatusNormalClosure, "bye")
+	defer closeConn(t, alice)
 
 	msg := map[string]interface{}{
 		"type": "offer",
@@ -97,12 +102,17 @@ func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 
 	writeJSON(t, alice, msg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	if err := alice.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("failed to set read deadline: %v", err)
+	}
 
-	_, data, err := alice.Read(ctx)
+	msgType, data, err := alice.ReadMessage()
 	if err != nil {
 		t.Fatalf("alice failed to read error: %v", err)
+	}
+
+	if msgType != websocket.TextMessage {
+		t.Fatalf("expected text message, got %d", msgType)
 	}
 
 	var received map[string]interface{}
@@ -131,10 +141,10 @@ func dialWebSocket(t *testing.T, baseURL, room, peer string) *websocket.Conn {
 	q.Set("peer", peer)
 	u.RawQuery = q.Encode()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	dialCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, u.String(), nil)
+	conn, _, err := websocket.DefaultDialer.DialContext(dialCtx, u.String(), nil)
 	if err != nil {
 		t.Fatalf("failed to dial websocket: %v", err)
 	}
@@ -145,10 +155,11 @@ func dialWebSocket(t *testing.T, baseURL, room, peer string) *websocket.Conn {
 func writeJSON(t *testing.T, conn *websocket.Conn, msg interface{}) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("failed to set write deadline: %v", err)
+	}
 
-	if err := conn.Write(ctx, websocket.MessageText, mustJSON(t, msg)); err != nil {
+	if err := conn.WriteMessage(websocket.TextMessage, mustJSON(t, msg)); err != nil {
 		t.Fatalf("failed to write message: %v", err)
 	}
 }
@@ -161,4 +172,15 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 		t.Fatalf("failed to marshal: %v", err)
 	}
 	return data
+}
+
+func closeConn(t *testing.T, conn *websocket.Conn) {
+	t.Helper()
+
+	_ = conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "test done"),
+		time.Now().Add(time.Second),
+	)
+	_ = conn.Close()
 }

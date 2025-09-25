@@ -1,16 +1,24 @@
 package signaling
 
 import (
+	"errors"
 	"net/http"
 	"strings"
+	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/gorilla/websocket"
 )
 
 const (
 	roomQueryParam = "room"
 	peerQueryParam = "peer"
+
+	closeGracePeriod = 2 * time.Second
 )
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 // ServeWS upgrades an HTTP request to a WebSocket connection and
 // registers the peer into the signaling hub.
@@ -28,9 +36,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		InsecureSkipVerify: true,
-	})
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.logger.Error("failed to accept websocket", "err", err)
 		return
@@ -39,13 +45,22 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	client := newClient(h, roomID, peerID, conn)
 
 	if err := h.register(r.Context(), client); err != nil {
-		status := websocket.StatusInternalError
-		closeReason := "failed to join room"
-		if err == errPeerExists {
-			status = websocket.StatusPolicyViolation
-			closeReason = "peer already registered"
+		var closeCode int
+		var reason string
+		if errors.Is(err, errPeerExists) {
+			closeCode = websocket.ClosePolicyViolation
+			reason = "peer already registered"
+		} else {
+			closeCode = websocket.CloseInternalServerErr
+			reason = "failed to join room"
 		}
-		_ = conn.Close(status, closeReason)
+
+		_ = conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(closeCode, reason),
+			time.Now().Add(closeGracePeriod),
+		)
+		_ = conn.Close()
 		return
 	}
 
