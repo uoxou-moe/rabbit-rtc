@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/uoxou-moe/rabbit-rtc/backend/internal/signaling"
 )
 
 const healthzPath = "/healthz"
+const signalingPath = "/ws"
 
 var serverStart = time.Now()
 
@@ -14,6 +17,9 @@ var serverStart = time.Now()
 func NewHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(healthzPath, healthHandler)
+
+	hub := signaling.NewHub(nil)
+	mux.HandleFunc(signalingPath, hub.ServeWS)
 	return mux
 }
 
