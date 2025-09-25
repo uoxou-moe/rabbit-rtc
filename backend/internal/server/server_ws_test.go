@@ -14,6 +14,7 @@ import (
 )
 
 func TestWebSocketRequiresQueryParams(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "")
 	h := NewHandler()
 
 	req := httptest.NewRequest(http.MethodGet, signalingPath, nil)
@@ -27,6 +28,7 @@ func TestWebSocketRequiresQueryParams(t *testing.T) {
 }
 
 func TestWebSocketRejectsNonGet(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "")
 	h := NewHandler()
 
 	req := httptest.NewRequest(http.MethodPost, signalingPath+"?room=test&peer=alice", nil)
@@ -40,6 +42,7 @@ func TestWebSocketRejectsNonGet(t *testing.T) {
 }
 
 func TestWebSocketSignalRouting(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "")
 	srv := httptest.NewServer(NewHandler())
 	t.Cleanup(srv.Close)
 
@@ -90,6 +93,7 @@ func TestWebSocketSignalRouting(t *testing.T) {
 }
 
 func TestWebSocketUnknownTargetSendsError(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "")
 	srv := httptest.NewServer(NewHandler())
 	t.Cleanup(srv.Close)
 
@@ -127,6 +131,7 @@ func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 }
 
 func TestWebSocketDispatchDuringDisconnectDoesNotPanic(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "")
 	srv := httptest.NewServer(NewHandler())
 	t.Cleanup(srv.Close)
 
@@ -159,6 +164,33 @@ func TestWebSocketDispatchDuringDisconnectDoesNotPanic(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 }
 
+func TestWebSocketRejectsDisallowedOrigin(t *testing.T) {
+	t.Setenv(allowedOriginsEnv, "https://allowed.example")
+	srv := httptest.NewServer(NewHandler())
+	t.Cleanup(srv.Close)
+
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("failed to parse server url: %v", err)
+	}
+
+	u.Scheme = "ws"
+	u.Path = signalingPath
+	q := u.Query()
+	q.Set("room", "room1")
+	q.Set("peer", "alice")
+	u.RawQuery = q.Encode()
+
+	dialer := websocket.Dialer{}
+	header := http.Header{}
+	header.Set("Origin", "https://not-allowed.example")
+
+	_, _, err = dialer.Dial(u.String(), header)
+	if err == nil {
+		t.Fatalf("expected handshake error for disallowed origin")
+	}
+}
+
 func dialWebSocket(t *testing.T, baseURL, room, peer string) *websocket.Conn {
 	t.Helper()
 
@@ -178,7 +210,9 @@ func dialWebSocket(t *testing.T, baseURL, room, peer string) *websocket.Conn {
 	dialCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.DefaultDialer.DialContext(dialCtx, u.String(), nil)
+	header := http.Header{}
+	header.Set("Origin", "http://127.0.0.1")
+	conn, _, err := websocket.DefaultDialer.DialContext(dialCtx, u.String(), header)
 	if err != nil {
 		t.Fatalf("failed to dial websocket: %v", err)
 	}

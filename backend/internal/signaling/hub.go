@@ -4,32 +4,56 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 var (
 	errPeerExists = errors.New("peer already registered")
 )
 
-// Hub manages signaling rooms and routes messages between peers.
-type Hub struct {
-	mu     sync.Mutex
-	rooms  map[string]*room
-	logger *slog.Logger
+var devAllowedOrigins = []string{
+	"http://localhost",
+	"https://localhost",
+	"http://127.0.0.1",
+	"https://127.0.0.1",
 }
 
-// NewHub constructs a Hub. If logger is nil, slog.Default is used.
-func NewHub(logger *slog.Logger) *Hub {
+// HubConfig contains the configuration used to build a Hub instance.
+type HubConfig struct {
+	Logger         *slog.Logger
+	AllowedOrigins []string
+}
+
+// Hub manages signaling rooms and routes messages between peers.
+type Hub struct {
+	mu       sync.Mutex
+	rooms    map[string]*room
+	logger   *slog.Logger
+	upgrader websocket.Upgrader
+}
+
+// NewHub constructs a Hub. If no logger is provided, slog.Default is used.
+func NewHub(cfg HubConfig) *Hub {
+	logger := cfg.Logger
 	if logger == nil {
 		logger = slog.Default()
 	}
 
+	baseLogger := logger.With("component", "signaling")
+	allowedOrigins := mergeAllowedOrigins(cfg.AllowedOrigins)
+	policy := newOriginPolicy(allowedOrigins)
+
 	return &Hub{
-		rooms:  make(map[string]*room),
-		logger: logger.With("component", "signaling"),
+		rooms:    make(map[string]*room),
+		logger:   baseLogger,
+		upgrader: newUpgrader(policy, baseLogger),
 	}
 }
 
+// register adds a client to the hub and creates the room if it does not exist.
 func (h *Hub) register(ctx context.Context, c *Client) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -165,4 +189,35 @@ func (r *room) listExcept(peerID string) []*Client {
 	}
 
 	return out
+}
+
+func mergeAllowedOrigins(configured []string) []string {
+	seen := make(map[string]struct{})
+	var result []string
+
+	for _, raw := range configured {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, trimmed)
+	}
+
+	if len(result) == 0 {
+		for _, origin := range devAllowedOrigins {
+			key := strings.ToLower(origin)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			result = append(result, origin)
+		}
+	}
+
+	return result
 }

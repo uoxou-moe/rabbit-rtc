@@ -50,6 +50,7 @@ CI と同じチェックは `make lint` / `make format` / `make test` で再現�
 ## バックエンド開発 (Go)
 ヘルスチェックエンドポイント付きの HTTP サーバを `make backend/run` で起動できます。環境変数 `PORT` でポート指定 (`8080` がデフォルト)、ヘルスチェックは `GET /healthz` で確認します。
 簡易的なシグナリング検証クライアントは `go run ./cmd/signaling-client -room sample -peer broadcaster` で起動できます（`backend` ディレクトリ配下）。
+WebSocket シグナリングは `SIGNALING_ALLOWED_ORIGINS` 環境変数（カンマ区切り）で許可する Origin を設定できます。未設定時は `localhost` / `127.0.0.1` のみ許可されます。
 
 [![Frontend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml)
 [![Backend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml)

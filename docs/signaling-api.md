@@ -67,3 +67,10 @@ go run ./cmd/signaling-client \
 ```
 
 ターミナルでJSONを入力すると送信されます。空行を送ると終了します。
+
+## Origin ポリシー
+WebSocket 接続時の `Origin` ヘッダーは許可リストで検証されます。
+
+- `SIGNALING_ALLOWED_ORIGINS` 環境変数にカンマ区切りで Origin を指定すると、その値が許可リストになります。
+- 環境変数を設定しない場合は `http(s)://localhost` と `http(s)://127.0.0.1` が許可され、ローカル開発を想定した挙動になります。
+- 許可されていない Origin からの接続は 403 (Forbidden) で拒否されます。必要に応じて本番環境で明示的に設定してください。

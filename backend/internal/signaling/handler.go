@@ -2,6 +2,7 @@ package signaling
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -16,8 +17,17 @@ const (
 	closeGracePeriod = 2 * time.Second
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+func newUpgrader(policy originPolicy, logger *slog.Logger) websocket.Upgrader {
+	return websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if policy.allows(origin) {
+				return true
+			}
+			logger.Warn("rejecting websocket origin", "origin", origin, "remote", r.RemoteAddr)
+			return false
+		},
+	}
 }
 
 // ServeWS upgrades an HTTP request to a WebSocket connection and
@@ -36,7 +46,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.logger.Error("failed to accept websocket", "err", err)
 		return
