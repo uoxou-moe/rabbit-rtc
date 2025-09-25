@@ -65,6 +65,7 @@ func (h *Hub) register(ctx context.Context, c *Client) error {
 	}
 
 	if err := r.addClient(c); err != nil {
+		h.logger.WarnContext(ctx, "failed to add client", "room", c.roomID, "peer", c.peerID, "err", err)
 		return err
 	}
 
@@ -94,6 +95,7 @@ func (h *Hub) dispatch(ctx context.Context, from *Client, msg Message) {
 	h.mu.Lock()
 	r, ok := h.rooms[from.roomID]
 	h.mu.Unlock()
+	h.logger.DebugContext(ctx, "dispatch message", "room", from.roomID, "from", from.peerID, "type", msg.Type, "to", msg.To)
 	if !ok {
 		from.sendError("room closed")
 		return
