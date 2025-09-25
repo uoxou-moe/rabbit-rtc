@@ -297,18 +297,26 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
             removeViewer(sender, 'viewer requested disconnect')
           }
           break
-        case 'error':
-          if (
-            typeof message.payload === 'object' &&
-            message.payload &&
-            'message' in (message.payload as Record<string, unknown>)
-          ) {
-            const description = (message.payload as { message?: string }).message
-            setLastError(description ?? 'シグナリングサーバからエラーを受信しました')
-          } else {
-            setLastError('シグナリングサーバからエラーを受信しました')
+        case 'error': {
+          let description: string | null = null
+
+          if (typeof (message as { message?: unknown }).message === 'string') {
+            const directMessage = (message as { message?: string }).message
+            if (directMessage && directMessage.length > 0) {
+              description = directMessage
+            }
           }
+
+          if (!description && typeof message.payload === 'object' && message.payload) {
+            const payload = message.payload as { message?: unknown }
+            if (typeof payload.message === 'string' && payload.message.length > 0) {
+              description = payload.message
+            }
+          }
+
+          setLastError(description ?? 'シグナリングサーバからエラーを受信しました')
           break
+        }
         default:
           console.info('Received unsupported signaling message', message)
       }
