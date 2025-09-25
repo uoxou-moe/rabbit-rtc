@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-]
+const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
 
 type BroadcastPhase = 'idle' | 'preparing-media' | 'connecting' | 'ready'
 
@@ -77,7 +75,10 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
 
   const closeSocket = useCallback(() => {
     const socket = socketRef.current
-    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    if (
+      socket &&
+      (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+    ) {
       socket.close(1000, 'broadcast finished')
     }
     socketRef.current = null
@@ -103,27 +104,27 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
     setStatus('配信を終了しました')
   }, [closeSocket, resetViewers, stopTracks])
 
-  const updateViewerState = useCallback((peer: string, connectionState?: RTCPeerConnectionState) => {
-    setViewers((current) => {
-      const others = current.filter((entry) => entry.peerId !== peer)
-      if (!connectionState) {
-        return others
-      }
-      return [...others, { peerId: peer, connectionState }]
-    })
-  }, [])
-
-  const sendMessage = useCallback(
-    (message: Record<string, unknown>) => {
-      const socket = socketRef.current
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        console.warn('Signaling socket is not open; skipping message', message)
-        return
-      }
-      socket.send(JSON.stringify(message))
+  const updateViewerState = useCallback(
+    (peer: string, connectionState?: RTCPeerConnectionState) => {
+      setViewers((current) => {
+        const others = current.filter((entry) => entry.peerId !== peer)
+        if (!connectionState) {
+          return others
+        }
+        return [...others, { peerId: peer, connectionState }]
+      })
     },
     [],
   )
+
+  const sendMessage = useCallback((message: Record<string, unknown>) => {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      console.warn('Signaling socket is not open; skipping message', message)
+      return
+    }
+    socket.send(JSON.stringify(message))
+  }, [])
 
   const removeViewer = useCallback(
     (viewerId: string, reason: string) => {
@@ -140,25 +141,28 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
     [updateViewerState],
   )
 
-  const handleViewerAnswer = useCallback(async (viewerId: string, payload: unknown) => {
-    const pc = connectionsRef.current.get(viewerId)
-    if (!pc || !payload || typeof payload !== 'object') {
-      return
-    }
+  const handleViewerAnswer = useCallback(
+    async (viewerId: string, payload: unknown) => {
+      const pc = connectionsRef.current.get(viewerId)
+      if (!pc || !payload || typeof payload !== 'object') {
+        return
+      }
 
-    const description = payload as RTCSessionDescriptionInit
-    if (!description.sdp || !description.type) {
-      return
-    }
+      const description = payload as RTCSessionDescriptionInit
+      if (!description.sdp || !description.type) {
+        return
+      }
 
-    try {
-      await pc.setRemoteDescription(description)
-    } catch (error) {
-      console.error('Failed to set remote description', error)
-      setLastError('視聴者からの応答を適用できませんでした')
-      removeViewer(viewerId, 'setRemoteDescription failed')
-    }
-  }, [removeViewer])
+      try {
+        await pc.setRemoteDescription(description)
+      } catch (error) {
+        console.error('Failed to set remote description', error)
+        setLastError('視聴者からの応答を適用できませんでした')
+        removeViewer(viewerId, 'setRemoteDescription failed')
+      }
+    },
+    [removeViewer],
+  )
 
   const handleViewerIce = useCallback(async (viewerId: string, payload: unknown) => {
     const pc = connectionsRef.current.get(viewerId)
@@ -207,7 +211,11 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
           return
         }
         updateViewerState(viewerId, pc.connectionState)
-        if (pc.connectionState === 'failed' || pc.connectionState === 'closed' || pc.connectionState === 'disconnected') {
+        if (
+          pc.connectionState === 'failed' ||
+          pc.connectionState === 'closed' ||
+          pc.connectionState === 'disconnected'
+        ) {
           removeViewer(viewerId, `connection state ${pc.connectionState}`)
         }
       }
@@ -225,7 +233,10 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       }
 
       try {
-        const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false })
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: false,
+          offerToReceiveVideo: false,
+        })
         await pc.setLocalDescription(offer)
         sendMessage({ type: 'offer', to: viewerId, payload: offer })
         setStatus('視聴者にオファーを送信しました')
@@ -273,7 +284,11 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
           }
           break
         case 'error':
-          if (typeof message.payload === 'object' && message.payload && 'message' in (message.payload as Record<string, unknown>)) {
+          if (
+            typeof message.payload === 'object' &&
+            message.payload &&
+            'message' in (message.payload as Record<string, unknown>)
+          ) {
             const description = (message.payload as { message?: string }).message
             setLastError(description ?? 'シグナリングサーバからエラーを受信しました')
           } else {
@@ -403,6 +418,18 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       toggleAudio,
       toggleVideo,
     }),
-    [audioEnabled, lastError, localStream, phase, start, status, stop, toggleAudio, toggleVideo, videoEnabled, viewers],
+    [
+      audioEnabled,
+      lastError,
+      localStream,
+      phase,
+      start,
+      status,
+      stop,
+      toggleAudio,
+      toggleVideo,
+      videoEnabled,
+      viewers,
+    ],
   )
 }

@@ -104,7 +104,9 @@ const BroadcastPage = () => {
                 disabled={!canEditSettings}
                 required
               />
-              <span className="form-hint">視聴者から識別される名前です。英数字で設定してください。</span>
+              <span className="form-hint">
+                視聴者から識別される名前です。英数字で設定してください。
+              </span>
             </label>
 
             <div className="form-actions">
@@ -184,7 +186,8 @@ const BroadcastPage = () => {
           </table>
         )}
         <p className="muted text-small">
-          視聴者が `/watch` 画面から参加すると、自動的にオファーを送信します。複数の視聴者を同時にサポートします。
+          視聴者が `/watch`
+          画面から参加すると、自動的にオファーを送信します。複数の視聴者を同時にサポートします。
         </p>
       </section>
     </div>
