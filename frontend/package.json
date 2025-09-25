@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
+    "test": "echo \"No frontend tests defined yet.\"",
     "preview": "vite preview"
   },
   "dependencies": {
