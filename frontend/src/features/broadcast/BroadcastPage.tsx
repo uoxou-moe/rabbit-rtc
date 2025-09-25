@@ -130,15 +130,15 @@ const BroadcastPage = () => {
               </span>
             </label>
 
-          <div className="form-actions">
-            <button
-              type={isStreaming ? 'button' : 'submit'}
-              className={`button ${isStreaming ? 'button-danger' : 'button-primary'}`}
-              onClick={handleActionClick}
-            >
-              {isStreaming ? '配信を終了' : '配信を開始'}
-            </button>
-          </div>
+            <div className="form-actions">
+              <button
+                type={isStreaming ? 'button' : 'submit'}
+                className={`button ${isStreaming ? 'button-danger' : 'button-primary'}`}
+                onClick={handleActionClick}
+              >
+                {isStreaming ? '配信を終了' : '配信を開始'}
+              </button>
+            </div>
           </form>
 
           <div className="status-block">
