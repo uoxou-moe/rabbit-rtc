@@ -1,4 +1,12 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type FormEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import './BroadcastPage.css'
 import { useBroadcaster } from './useBroadcaster'
 
@@ -72,6 +80,19 @@ const BroadcastPage = () => {
   const canEditSettings = phase === 'idle'
   const isStreaming = phase !== 'idle'
 
+  const handleActionClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (!isStreaming) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      stop()
+    },
+    [isStreaming, stop],
+  )
+
   return (
     <div className="broadcast-page">
       <header className="page-header">
@@ -109,17 +130,15 @@ const BroadcastPage = () => {
               </span>
             </label>
 
-            <div className="form-actions">
-              {isStreaming ? (
-                <button type="button" className="button button-danger" onClick={stop}>
-                  配信を終了
-                </button>
-              ) : (
-                <button type="submit" className="button button-primary">
-                  配信を開始
-                </button>
-              )}
-            </div>
+          <div className="form-actions">
+            <button
+              type={isStreaming ? 'button' : 'submit'}
+              className={`button ${isStreaming ? 'button-danger' : 'button-primary'}`}
+              onClick={handleActionClick}
+            >
+              {isStreaming ? '配信を終了' : '配信を開始'}
+            </button>
+          </div>
           </form>
 
           <div className="status-block">
