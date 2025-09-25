@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -123,6 +124,39 @@ func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 	if received["type"] != "error" {
 		t.Fatalf("expected error message, got type %v", received["type"])
 	}
+}
+
+func TestWebSocketDispatchDuringDisconnectDoesNotPanic(t *testing.T) {
+	srv := httptest.NewServer(NewHandler())
+	t.Cleanup(srv.Close)
+
+	alice := dialWebSocket(t, srv.URL, "race-room", "alice")
+	t.Cleanup(func() { closeConn(t, alice) })
+
+	bob := dialWebSocket(t, srv.URL, "race-room", "bob")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			msg := map[string]interface{}{
+				"type":    "offer",
+				"to":      "bob",
+				"payload": map[string]int{"seq": i},
+			}
+			writeJSON(t, alice, msg)
+		}
+	}()
+
+	// allow some messages to be inflight before disconnecting bob
+	time.Sleep(20 * time.Millisecond)
+	closeConn(t, bob)
+
+	wg.Wait()
+
+	// give the hub a brief moment to process any remaining dispatches
+	time.Sleep(50 * time.Millisecond)
 }
 
 func dialWebSocket(t *testing.T, baseURL, room, peer string) *websocket.Conn {
