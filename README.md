@@ -45,6 +45,7 @@ make backend/run   # Go サーバ起動 (http://localhost:8080)
 
 ## フロントエンド開発 (React + Vite)
 `make dev` で開発サーバが起動し、[http://localhost:5173](http://localhost:5173) からアクセスできます。
+配信者用UIは [http://localhost:5173/broadcast](http://localhost:5173/broadcast) で利用できます。
 CI と同じチェックは `make lint` / `make format` / `make test` で再現できます。
 
 ## バックエンド開発 (Go)

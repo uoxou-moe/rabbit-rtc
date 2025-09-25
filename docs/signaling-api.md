@@ -51,6 +51,15 @@ ws://localhost:8080/ws?room={ROOM_ID}&peer={PEER_ID}
 - `message type is required`: `type` フィールドが空。
 - `invalid message format`: JSON 解析に失敗した。
 
+### メッセージ種別（暫定）
+
+- `broadcaster-ready`: 配信者がシグナリングへ接続した際に送信し、視聴者側がストリーム要求を開始できる状態であることを通知します。
+- `viewer-ready` / `viewer-join`: 視聴者が接続した際に送信し、オファー生成をリクエストします。
+- `offer`: 配信者から視聴者へ送信される SDP オファー。
+- `answer`: 視聴者からの SDP アンサー。
+- `ice`: 双方向にやり取りされる ICE candidate。
+- `viewer-left` / `bye`: 視聴者が切断する際に送信するメッセージで、サーバー側でリソースを解放します。
+
 ## 接続/切断時の挙動
 - 接続成功時に明示的なシステムメッセージは送信されません。必要に応じて `offer` などのユーザーメッセージでハンドシェイクしてください。
 - ピアが切断されるとルームから削除され、メッセージは転送されなくなります。
