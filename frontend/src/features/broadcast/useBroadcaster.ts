@@ -45,8 +45,22 @@ function buildSignalingUrl(room: string, peerId: string) {
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const host = window.location.host
-  return `${protocol}://${host}/ws?${query}`
+  const { hostname, port } = window.location
+
+  const defaultPort = protocol === 'wss' ? '443' : '80'
+  const currentPort = port || defaultPort
+
+  let targetHost = `${hostname}:${currentPort}`
+
+  if (currentPort === '5173') {
+    targetHost = `${hostname}:8080`
+  }
+
+  if ((protocol === 'ws' && currentPort === '80') || (protocol === 'wss' && currentPort === '443')) {
+    targetHost = hostname
+  }
+
+  return `${protocol}://${targetHost}/ws?${query}`
 }
 
 export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroadcasterResult {
