@@ -356,6 +356,14 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       debugLog('start skipped, phase', phase)
       return
     }
+    if (!room || room.trim().length === 0 || !peerId || peerId.trim().length === 0) {
+      const message = 'ルームIDとピアIDを入力してください'
+      debugLog('start aborted due to missing identifiers', room, peerId)
+      setLastError(message)
+      setStatus(message)
+      setPhase('idle')
+      return
+    }
 
     setPhase('preparing-media')
     setStatus('カメラとマイクへのアクセスをリクエストしています...')
