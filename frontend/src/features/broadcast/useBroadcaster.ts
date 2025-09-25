@@ -53,23 +53,19 @@ export function buildSignalingUrl(room: string, peerId: string) {
     return `${base}${separator}${query}`
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const { hostname, port } = window.location
+  const { protocol: pageProtocol, hostname, port } = window.location
+  const isSecure = pageProtocol === 'https:'
+  const wsProtocol = isSecure ? 'wss' : 'ws'
 
-  const defaultPort = protocol === 'wss' ? '443' : '80'
-  const currentPort = port || defaultPort
-
-  let targetHost = `${hostname}:${currentPort}`
-
-  if (currentPort === '5173') {
-    targetHost = `${hostname}:8080`
+  if (port === '5173') {
+    return `${wsProtocol}://${hostname}:8080/ws?${query}`
   }
 
-  if ((protocol === 'ws' && currentPort === '80') || (protocol === 'wss' && currentPort === '443')) {
-    targetHost = hostname
+  if (!port) {
+    return `${wsProtocol}://${hostname}/ws?${query}`
   }
 
-  return `${protocol}://${targetHost}/ws?${query}`
+  return `${wsProtocol}://${hostname}:${port}/ws?${query}`
 }
 
 export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroadcasterResult {

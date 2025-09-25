@@ -46,7 +46,7 @@ make backend/run   # Go サーバ起動 (http://localhost:8080)
 ## フロントエンド開発 (React + Vite)
 `make dev` で開発サーバが起動し、[http://localhost:5173](http://localhost:5173) からアクセスできます。
 配信者用UIは [http://localhost:5173/broadcast](http://localhost:5173/broadcast) で利用できます。
-バックエンドと別ポートで動かす場合は `VITE_SIGNALING_WS_URL` を設定してシグナリング先を上書きできます（例: `VITE_SIGNALING_WS_URL=ws://localhost:8080/ws npm run dev`）。
+バックエンドをプロキシせず別ポートで動かす場合は `VITE_SIGNALING_WS_URL` を設定してシグナリング先を上書きしてください（例: `VITE_SIGNALING_WS_URL=ws://localhost:8080/ws npm run dev`）。未設定時は開発環境では `ws://<host>:8080/ws`、本番ではページのホストをそのまま利用します。
 CI と同じチェックは `make lint` / `make format` / `make test` で再現できます。
 
 ## バックエンド開発 (Go)
