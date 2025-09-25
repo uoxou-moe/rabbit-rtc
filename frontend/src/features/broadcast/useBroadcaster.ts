@@ -44,7 +44,7 @@ interface UseBroadcasterResult {
   toggleVideo: () => void
 }
 
-function buildSignalingUrl(room: string, peerId: string) {
+export function buildSignalingUrl(room: string, peerId: string) {
   const base = (import.meta.env.VITE_SIGNALING_WS_URL as string | undefined)?.trim()
   const query = new URLSearchParams({ room, peer: peerId }).toString()
 
