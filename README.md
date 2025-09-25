@@ -49,6 +49,7 @@ CI と同じチェックは `make lint` / `make format` / `make test` で再現�
 
 ## バックエンド開発 (Go)
 ヘルスチェックエンドポイント付きの HTTP サーバを `make backend/run` で起動できます。環境変数 `PORT` でポート指定 (`8080` がデフォルト)、ヘルスチェックは `GET /healthz` で確認します。
+簡易的なシグナリング検証クライアントは `go run ./cmd/signaling-client -room sample -peer broadcaster` で起動できます（`backend` ディレクトリ配下）。
 
 [![Frontend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml)
 [![Backend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml)
@@ -59,6 +60,7 @@ CI と同じチェックは `make lint` / `make format` / `make test` で再現�
 - `docs/setup.md` : 開発環境の構築手順と起動方法。
 - `docs/roadmap.md` : 今後の実装計画とバックログ。
 - `docs/tech-stack.md` : 採用技術と候補技術のメモ。
+- `docs/signaling-api.md` : WebRTC シグナリング WebSocket の暫定仕様。
 
 ## ライセンス
 このプロジェクトは [MIT License](LICENSE) の下で公開されています。
