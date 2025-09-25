@@ -95,6 +95,7 @@ func (c *Client) readLoop(ctx context.Context) {
 			continue
 		}
 
+		c.logger.DebugContext(ctx, "inbound message", "type", msg.Type, "to", msg.To)
 		c.hub.dispatch(ctx, c, msg)
 	}
 }
@@ -124,6 +125,7 @@ func (c *Client) writeLoop(ctx context.Context) {
 				c.logger.DebugContext(ctx, "write failed", "err", err)
 				return
 			}
+			c.logger.DebugContext(ctx, "outbound message sent")
 		}
 	}
 }

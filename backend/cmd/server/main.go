@@ -11,12 +11,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/uoxou-moe/rabbit-rtc/backend/internal/server"
 )
 
 const defaultAddr = ":8080"
 
 func main() {
+	loadEnv()
+
 	addr := resolveAddr()
 
 	srv := &http.Server{
@@ -48,6 +52,29 @@ func main() {
 	}
 
 	log.Println("server stopped")
+}
+
+func loadEnv() {
+	candidates := []string{"../.env", ".env"}
+	for _, path := range candidates {
+		values, err := godotenv.Read(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				log.Printf("failed to load env file %s: %v", path, err)
+			}
+			continue
+		}
+		for key, value := range values {
+			if _, exists := os.LookupEnv(key); exists {
+				continue
+			}
+			if err := os.Setenv(key, value); err != nil {
+				log.Printf("failed to set env %s from %s: %v", key, path, err)
+			}
+		}
+		log.Printf("loaded environment variables from %s", path)
+		return
+	}
 }
 
 func resolveAddr() string {
