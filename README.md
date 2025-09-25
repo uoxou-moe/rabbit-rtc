@@ -50,7 +50,9 @@ CI と同じチェックは `make lint` / `make format` / `make test` で再現�
 ## バックエンド開発 (Go)
 ヘルスチェックエンドポイント付きの HTTP サーバを `make backend/run` で起動できます。環境変数 `PORT` でポート指定 (`8080` がデフォルト)、ヘルスチェックは `GET /healthz` で確認します。
 
-![Lint Status](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/lint.yml/badge.svg)
+[![Frontend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml)
+[![Backend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml)
+
 
 ## ドキュメント
 - `docs/architecture.md` : システム構成と通信フロー、レイテンシ要件。
