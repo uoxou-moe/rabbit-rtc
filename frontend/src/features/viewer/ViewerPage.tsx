@@ -30,10 +30,11 @@ const ViewerPage = () => {
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  const { remoteStream, phase, status, lastError, connectionState, connect, disconnect } = useViewer({
-    room: roomId.trim(),
-    peerId: peerId.trim(),
-  })
+  const { remoteStream, phase, status, lastError, connectionState, connect, disconnect } =
+    useViewer({
+      room: roomId.trim(),
+      peerId: peerId.trim(),
+    })
 
   useEffect(() => {
     const video = videoRef.current
@@ -175,7 +176,8 @@ const ViewerPage = () => {
             <p className="status-text">{status}</p>
             {connectionState ? (
               <p className="status-connection">
-                接続ステータス: <span className={`badge badge-${connectionState}`}>{connectionState}</span>
+                接続ステータス:{' '}
+                <span className={`badge badge-${connectionState}`}>{connectionState}</span>
               </p>
             ) : null}
             {lastError ? <p className="status-error">{lastError}</p> : null}
@@ -210,7 +212,9 @@ const ViewerPage = () => {
           <h2 className="panel-title">ライブ視聴</h2>
           <div className={`video-wrapper ${remoteStream ? '' : 'video-wrapper--empty'}`}>
             <video ref={videoRef} className="player" playsInline autoPlay controls={false} />
-            {!remoteStream ? <p className="video-placeholder">ストリームの受信を待機しています...</p> : null}
+            {!remoteStream ? (
+              <p className="video-placeholder">ストリームの受信を待機しています...</p>
+            ) : null}
           </div>
           <p className="muted text-small">
             ブラウザの自動再生制限により、音声を再生するには「ミュート解除」を押してください。接続終了後はブラウザのタブを閉じるか、上の
@@ -225,7 +229,11 @@ const ViewerPage = () => {
           ルームIDとピアIDが配信者と一致している必要があります。配信者がオンラインの場合は自動的に接続が開始されます。
         </p>
         <p className="muted text-small">
-          配信者用のページは <a className="link" href="/broadcast">/broadcast</a> からアクセスできます。
+          配信者用のページは{' '}
+          <a className="link" href="/broadcast">
+            /broadcast
+          </a>{' '}
+          からアクセスできます。
         </p>
       </section>
     </div>
