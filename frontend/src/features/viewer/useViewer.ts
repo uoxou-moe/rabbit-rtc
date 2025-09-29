@@ -376,6 +376,8 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
 
     const trimmedRoom = room.trim()
     const trimmedPeer = peerId.trim()
+    // TODO(#28): 同一ピアIDを利用する視聴者がソケット切断される問題を解消する。
+    // https://github.com/uoxou-moe/rabbit-rtc/issues/28
     if (trimmedRoom.length === 0 || trimmedPeer.length === 0) {
       const message = 'ルームIDとピアIDを入力してください'
       safeSetLastError(message)
