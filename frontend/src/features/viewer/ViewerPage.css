@@ -1,36 +1,52 @@
 .viewer-page {
+  --muted-foreground: #64748b;
+  --border-color: rgba(148, 163, 184, 0.4);
+  position: relative;
+  z-index: 0;
   display: flex;
   flex-direction: column;
   gap: 2rem;
   padding: 2rem clamp(1.5rem, 4vw, 3rem);
   max-width: 1100px;
   margin: 0 auto;
+  min-height: 100vh;
 }
 
-.page-header {
+.viewer-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 55%),
+    radial-gradient(circle at 20% 80%, rgba(20, 184, 166, 0.12), transparent 60%),
+    linear-gradient(180deg, #f8fafc 0%, #e0f2f1 100%);
+}
+
+.viewer-page .page-header {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.page-title {
+.viewer-page .page-title {
   font-size: clamp(1.75rem, 2.6vw, 2.5rem);
   font-weight: 700;
   margin: 0;
 }
 
-.page-subtitle {
+.viewer-page .page-subtitle {
   margin: 0;
   color: var(--muted-foreground);
 }
 
-.layout {
+.viewer-page .layout {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
-.panel {
+.viewer-page .panel {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
@@ -40,46 +56,46 @@
   gap: 1.25rem;
 }
 
-.panel-title {
+.viewer-page .panel-title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
 }
 
-.form {
+.viewer-page .form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.form-field {
+.viewer-page .form-field {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.form-label {
+.viewer-page .form-label {
   font-weight: 600;
 }
 
-.form-hint {
+.viewer-page .form-hint {
   color: var(--muted-foreground);
   font-size: 0.85rem;
 }
 
-.form-actions {
+.viewer-page .form-actions {
   display: flex;
   gap: 0.75rem;
 }
 
-.controls {
+.viewer-page .controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
 }
 
-.input {
+.viewer-page .input {
   border-radius: 8px;
   border: 1px solid var(--border-color);
   padding: 0.6rem 0.75rem;
@@ -87,11 +103,11 @@
   background: white;
 }
 
-.input:disabled {
+.viewer-page .input:disabled {
   background: rgba(148, 163, 184, 0.1);
 }
 
-.status-block {
+.viewer-page .status-block {
   background: rgba(15, 23, 42, 0.03);
   border-radius: 12px;
   padding: 1rem;
@@ -100,30 +116,30 @@
   gap: 0.25rem;
 }
 
-.status-label {
+.viewer-page .status-label {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted-foreground);
 }
 
-.status-text {
+.viewer-page .status-text {
   margin: 0;
   font-weight: 600;
 }
 
-.status-connection {
+.viewer-page .status-connection {
   margin: 0;
   font-size: 0.95rem;
 }
 
-.status-error {
+.viewer-page .status-error {
   margin: 0;
   color: #dc2626;
   font-size: 0.95rem;
 }
 
-.button {
+.viewer-page .button {
   border: none;
   border-radius: 10px;
   padding: 0.65rem 1.1rem;
@@ -134,54 +150,54 @@
     box-shadow 0.15s ease;
 }
 
-.button:disabled {
+.viewer-page .button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
   box-shadow: none;
 }
 
-.button-primary {
+.viewer-page .button-primary {
   background: linear-gradient(135deg, #10b981, #14b8a6);
   color: white;
   box-shadow: 0 8px 20px rgba(20, 184, 166, 0.35);
 }
 
-.button-secondary {
+.viewer-page .button-secondary {
   background: #e2e8f0;
   color: #0f172a;
 }
 
-.button-danger {
+.viewer-page .button-danger {
   background: linear-gradient(135deg, #ef4444, #f87171);
   color: white;
   box-shadow: 0 8px 20px rgba(248, 113, 113, 0.35);
 }
 
-.button:not(:disabled):hover {
+.viewer-page .button:not(:disabled):hover {
   transform: translateY(-1px);
 }
 
-.button:not(:disabled):active {
+.viewer-page .button:not(:disabled):active {
   transform: translateY(0);
 }
 
-.slider {
+.viewer-page .slider {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.slider-label {
+.viewer-page .slider-label {
   font-size: 0.9rem;
   color: var(--muted-foreground);
 }
 
-.slider-input {
+.viewer-page .slider-input {
   width: 140px;
 }
 
-.video-wrapper {
+.viewer-page .video-wrapper {
   position: relative;
   width: 100%;
   padding-top: 56.25%;
@@ -193,11 +209,11 @@
   justify-content: center;
 }
 
-.video-wrapper--empty {
+.viewer-page .video-wrapper--empty {
   background: rgba(15, 23, 42, 0.8);
 }
 
-.player {
+.viewer-page .player {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -206,7 +222,7 @@
   background: #111827;
 }
 
-.video-placeholder {
+.viewer-page .video-placeholder {
   position: absolute;
   inset: 0;
   display: flex;
@@ -217,38 +233,25 @@
   letter-spacing: 0.02em;
 }
 
-.muted {
+.viewer-page .muted {
   color: var(--muted-foreground);
   margin: 0;
 }
 
-.text-small {
+.viewer-page .text-small {
   font-size: 0.85rem;
 }
 
-.link {
+.viewer-page .link {
   color: #4f46e5;
   text-decoration: none;
 }
 
-.link:hover {
+.viewer-page .link:hover {
   text-decoration: underline;
 }
 
-:root {
-  --muted-foreground: #64748b;
-  --border-color: rgba(148, 163, 184, 0.4);
-}
-
-body {
-  background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 55%),
-    radial-gradient(circle at 20% 80%, rgba(20, 184, 166, 0.12), transparent 60%),
-    linear-gradient(180deg, #f8fafc 0%, #e0f2f1 100%);
-  min-height: 100vh;
-}
-
-.badge {
+.viewer-page .badge {
   display: inline-flex;
   align-items: center;
   padding: 0.15rem 0.6rem;
@@ -257,22 +260,22 @@ body {
   font-weight: 600;
 }
 
-.badge-connected,
-.badge-completed {
+.viewer-page .badge-connected,
+.viewer-page .badge-completed {
   background: rgba(34, 197, 94, 0.15);
   color: #15803d;
 }
 
-.badge-connecting,
-.badge-new,
-.badge-checking {
+.viewer-page .badge-connecting,
+.viewer-page .badge-new,
+.viewer-page .badge-checking {
   background: rgba(59, 130, 246, 0.15);
   color: #1d4ed8;
 }
 
-.badge-disconnected,
-.badge-failed,
-.badge-closed {
+.viewer-page .badge-disconnected,
+.viewer-page .badge-failed,
+.viewer-page .badge-closed {
   background: rgba(248, 113, 113, 0.18);
   color: #b91c1c;
 }
@@ -282,11 +285,11 @@ body {
     padding: 1.5rem 1rem 3rem;
   }
 
-  .panel {
+  .viewer-page .panel {
     padding: 1.5rem;
   }
 
-  .slider-input {
+  .viewer-page .slider-input {
     width: 100px;
   }
 }
