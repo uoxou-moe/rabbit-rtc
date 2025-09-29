@@ -96,10 +96,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     socket.onerror = null
     socket.onclose = null
 
-    if (
-      socket.readyState === WebSocket.CONNECTING ||
-      socket.readyState === WebSocket.OPEN
-    ) {
+    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
       debugLog('closing socket')
       socket.close(1000, 'viewer disconnected')
     }
@@ -154,6 +151,11 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       console.warn('Failed to send signaling message', error)
     }
   }, [])
+
+  const requestOffer = useCallback(() => {
+    debugLog('requesting offer from broadcaster')
+    sendMessage({ type: 'viewer-ready' })
+  }, [sendMessage])
 
   const createPeerConnection = useCallback(() => {
     let pc = peerConnectionRef.current
@@ -215,20 +217,26 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
         safeSetStatus('ピア接続が失敗しました')
         cleanupPeerConnection()
         safeSetPhase('waiting-offer')
+        requestOffer()
       } else if (state === 'disconnected' || state === 'closed') {
         safeSetStatus('接続が終了しました。再開を待機しています...')
         cleanupPeerConnection()
         safeSetPhase('waiting-offer')
+        requestOffer()
       }
     }
 
     return pc
-  }, [cleanupPeerConnection, safeSetConnectionState, safeSetLastError, safeSetPhase, safeSetRemoteStream, safeSetStatus, sendMessage])
-
-  const requestOffer = useCallback(() => {
-    debugLog('requesting offer from broadcaster')
-    sendMessage({ type: 'viewer-ready' })
-  }, [sendMessage])
+  }, [
+    cleanupPeerConnection,
+    safeSetConnectionState,
+    safeSetLastError,
+    safeSetPhase,
+    safeSetRemoteStream,
+    safeSetStatus,
+    sendMessage,
+    requestOffer,
+  ])
 
   const handleOffer = useCallback(
     async (sender: string, payload: unknown) => {
@@ -268,22 +276,32 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
         safeSetPhase('waiting-offer')
       }
     },
-    [cleanupPeerConnection, createPeerConnection, safeSetLastError, safeSetPhase, safeSetStatus, sendMessage],
+    [
+      cleanupPeerConnection,
+      createPeerConnection,
+      safeSetLastError,
+      safeSetPhase,
+      safeSetStatus,
+      sendMessage,
+    ],
   )
 
-  const handleRemoteIce = useCallback(async (payload: unknown) => {
-    const pc = peerConnectionRef.current
-    if (!pc || !payload || typeof payload !== 'object') {
-      return
-    }
+  const handleRemoteIce = useCallback(
+    async (payload: unknown) => {
+      const pc = peerConnectionRef.current
+      if (!pc || !payload || typeof payload !== 'object') {
+        return
+      }
 
-    try {
-      await pc.addIceCandidate(payload as RTCIceCandidateInit)
-    } catch (error) {
-      console.error('Failed to add remote ICE candidate', error)
-      safeSetLastError('リモート ICE candidate の適用に失敗しました')
-    }
-  }, [safeSetLastError])
+      try {
+        await pc.addIceCandidate(payload as RTCIceCandidateInit)
+      } catch (error) {
+        console.error('Failed to add remote ICE candidate', error)
+        safeSetLastError('リモート ICE candidate の適用に失敗しました')
+      }
+    },
+    [safeSetLastError],
+  )
 
   const handleBroadcasterLeft = useCallback(() => {
     debugLog('broadcaster left or ended')
@@ -340,7 +358,14 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
           debugLog('unsupported message type', message.type)
       }
     },
-    [handleBroadcasterLeft, handleOffer, handleRemoteIce, requestOffer, safeSetLastError, safeSetStatus],
+    [
+      handleBroadcasterLeft,
+      handleOffer,
+      handleRemoteIce,
+      requestOffer,
+      safeSetLastError,
+      safeSetStatus,
+    ],
   )
 
   const connect = useCallback(() => {
@@ -399,7 +424,18 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       safeSetPhase('idle')
       safeSetStatus('シグナリング接続が終了しました')
     }
-  }, [cleanupPeerConnection, handleMessage, phase, peerId, requestOffer, room, safeSetConnectionState, safeSetLastError, safeSetPhase, safeSetStatus])
+  }, [
+    cleanupPeerConnection,
+    handleMessage,
+    phase,
+    peerId,
+    requestOffer,
+    room,
+    safeSetConnectionState,
+    safeSetLastError,
+    safeSetPhase,
+    safeSetStatus,
+  ])
 
   const disconnect = useCallback(() => {
     debugLog('disconnect invoked')
