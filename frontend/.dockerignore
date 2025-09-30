@@ -1,0 +1,19 @@
+# Dependency and build artifacts
+node_modules/
+dist/
+.tmp/
+.cache/
+
+# Environment and tooling files
+.env
+.env.*
+.npmrc
+
+# VCS
+.git
+.gitignore
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,0 +1,14 @@
+# Exclude VCS and editor files
+.git
+.gitignore
+
+# Build outputs and caches
+bin/
+tmp/
+*.log
+*.out
+coverage/
+
+# Environment overrides
+.env
+.env.*

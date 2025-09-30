@@ -7,6 +7,7 @@
 - npm 10.x もしくは pnpm/yarn 等のパッケージマネージャ
 - Go 1.22 以降
 - Git、Make（任意）
+- Docker 24.x 以降と Docker Compose v2（コンテナ開発を行う場合）
 
 ## 初期セットアップ
 ```bash
@@ -15,7 +16,7 @@ git clone https://github.com/uoxou-moe/rabbit-rtc.git
 cd rabbit-rtc
 ```
 
-### フロントエンド
+### フロントエンド（ローカル実行）
 1. `frontend/` は React + Vite（TypeScript テンプレート）で初期化済みです。
 2. 初回セットアップ:
    ```bash
@@ -27,7 +28,7 @@ cd rabbit-rtc
    ```
 3. `.env` や設定ファイルが必要になった場合は `frontend/.env.example` を整備してください。
 
-### バックエンド
+### バックエンド（ローカル実行）
 1. `backend/` には Go モジュールが初期化済みです。ヘルスチェックエンドポイントを備えた HTTP サーバを `cmd/server` で提供しています。
    ```bash
    # テスト実行
@@ -40,9 +41,36 @@ cd rabbit-rtc
 2. `PORT` 環境変数を設定するとリッスンポートを変更できます（デフォルトは 8080）。ヘルスチェックは `GET /healthz` で確認できます。
 3. 将来的に WebSocket シグナリングと WebRTC 処理（例: `pion/webrtc`）を追加予定です。
 
-### 開発環境のホットリロード
-- フロントエンドは Vite、バックエンドは `air` などのホットリロードツール利用を検討。
-- Docker Compose による統合開発環境は必要に応じて別途整備。
+### コンテナベースの開発
+
+バックエンドとフロントエンドそれぞれに `Dockerfile` を用意しています。個別にビルド/起動する場合の例は以下の通りです。
+
+```bash
+# バックエンド
+docker build -t rabbit-backend ./backend
+docker run --rm -p 8080:8080 \
+  -e SIGNALING_ALLOWED_ORIGINS="http://localhost:5173" \
+  rabbit-backend
+
+# フロントエンド
+docker build -t rabbit-frontend ./frontend
+docker run --rm -it -p 5173:5173 \
+  -e VITE_SIGNALING_WS_URL="ws://localhost:8080/ws" \
+  rabbit-frontend
+```
+
+ローカルで一括起動したい場合はリポジトリルートの `docker-compose.yml` を利用します。
+
+```bash
+# 初回は --build を付与してイメージ作成
+docker compose up --build
+```
+
+- `backend` サービスは `PORT=8080` で起動し、`SIGNALING_ALLOWED_ORIGINS` を `http://localhost:5173,http://127.0.0.1:5173` に設定します。
+- `frontend` サービスは `VITE_SIGNALING_WS_URL=ws://backend:8080/ws` を環境変数で注入し、ホットリロードのために `./frontend` ディレクトリをマウントします。
+- 追加の環境変数を注入したい場合は `.env` ファイル（Compose の標準仕様）もしくは `--env-file` オプションを使用してください。
+
+コード変更後に再ビルドする場合は `docker compose up --build <service>` で対象サービスのみ更新できます。バックエンドはマルチステージビルドで静的バイナリを生成するため、ホットリロードが必要な場合はローカル Go ツールチェーンの利用が推奨です。
 
 ## テスト
 - フロントエンド: Vitest と React Testing Library を導入予定。
@@ -58,5 +86,5 @@ cd rabbit-rtc
 
 ## 今後の TODO
 - 実際のディレクトリ構成とスクリプトが確定したら、本書のサンプルコマンドを最新のものに更新。
-- Docker / CI（GitHub Actions）でのセットアップ手順を追加。
+- CI 向けの Docker / GitHub Actions 手順を整備。
 - `.env.example` やサンプル設定ファイルを追加し、初期構築を簡易化。

@@ -23,7 +23,8 @@
 1. Node.js 22.19 以降（もしくはそれに準ずる LTS）をインストール。
 2. Go 1.22 以降をインストール。
 3. リポジトリをクローン後、フロントエンド・バックエンドの依存関係を導入。
-4. 開発サーバやバックエンドサーバを個別に起動し、WebRTC接続を確認。
+4. Docker（24.x 以降推奨）と Docker Compose v2 が利用可能だと、コンテナベースの開発が簡単になります。
+5. 開発サーバやバックエンドサーバを個別に起動し、WebRTC接続を確認。
 
 ## 開発コマンド一覧
 プロジェクトルートで `make` コマンドを実行すると、よく使う開発フローをまとめて呼び出せます。
@@ -42,6 +43,52 @@ make format-fix    # Prettier --write + gofmt で整形
 make frontend/dev  # npm run dev
 make backend/run   # Go サーバ起動 (http://localhost:8080)
 ```
+
+## コンテナ開発環境 (Docker / Docker Compose)
+
+### バックエンドコンテナ
+`backend/` にはマルチステージ構成の `Dockerfile` を追加しています。Go バイナリをビルドし、distroless ベースイメージに格納します。
+
+```bash
+# イメージのビルド
+docker build -t rabbit-backend ./backend
+
+# コンテナの起動
+docker run --rm -p 8080:8080 \
+  -e SIGNALING_ALLOWED_ORIGINS="http://localhost:5173" \
+  rabbit-backend
+```
+
+起動時は `PORT` 環境変数でポート指定が可能です（デフォルト `8080`）。`SIGNALING_ALLOWED_ORIGINS` はカンマ区切りで Origin を列挙します。
+
+### フロントエンドコンテナ
+`frontend/` の `Dockerfile` では Node.js 22 ベースで依存をインストールし、Vite 開発サーバを `0.0.0.0:5173` で公開します。
+
+```bash
+docker build -t rabbit-frontend ./frontend
+docker run --rm -it -p 5173:5173 \
+  -e VITE_SIGNALING_WS_URL="ws://localhost:8080/ws" \
+  rabbit-frontend
+```
+
+`VITE_SIGNALING_WS_URL` を上書きすることで、接続先シグナリングサーバを切り替えられます。
+
+### Docker Compose での統合起動
+ルートには `docker-compose.yml` を用意しています。以下でバックエンドとフロントエンドを同時に起動できます。
+
+```bash
+docker compose up --build
+```
+
+初回はイメージをビルドし、2 回目以降は差分のみ再ビルドします。`docker compose up --build backend` のようにサービスを指定すると片方のみ再構築できます。
+
+Compose はデフォルトで以下の設定を行います。
+
+- `backend` サービス: `SIGNALING_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173`
+- `frontend` サービス: `VITE_SIGNALING_WS_URL=ws://backend:8080/ws`
+- フロントエンドのソースコードはボリュームマウントされ、Vite のホットリロードが利用できます。
+
+追加の環境変数を設定したい場合は、`docker compose --env-file` もしくは `.env` ファイル（プロジェクトルート）で上書きしてください。
 
 ## フロントエンド開発 (React + Vite)
 `make dev` で開発サーバが起動し、[http://localhost:5173](http://localhost:5173) からアクセスできます。
