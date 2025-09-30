@@ -154,14 +154,17 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
 
   const sendMessage = useCallback((message: Record<string, unknown>) => {
     const socket = socketRef.current
+    const typeCandidate = (message as { type?: unknown }).type
+    const messageType = typeof typeCandidate === 'string' ? typeCandidate : 'unknown'
+
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      logger.debug('signaling socket is not open; skipping message', message)
+      logger.debug('signaling socket is not open; skipping message', { type: messageType })
       return
     }
 
     try {
       socket.send(JSON.stringify(message))
-      logger.debug('sent message', message)
+      logger.debug('sent signaling message', { type: messageType })
     } catch (error) {
       logger.warn('Failed to send signaling message', error)
     }
@@ -327,14 +330,17 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
 
   const handleMessage = useCallback(
     (raw: string) => {
-      logger.debug('message received', raw)
       let message: SignalingMessage
       try {
         message = JSON.parse(raw) as SignalingMessage
       } catch (error) {
-        logger.warn('Received malformed signaling payload', raw, error)
+        const fallbackInfo = typeof raw === 'string' ? { length: raw.length } : { length: 0 }
+        logger.warn('Received malformed signaling payload', fallbackInfo, error)
         return
       }
+
+      const messageType = typeof message.type === 'string' ? message.type : 'unknown'
+      logger.debug('message received', { type: messageType })
 
       const sender = message.from
       switch (message.type) {
