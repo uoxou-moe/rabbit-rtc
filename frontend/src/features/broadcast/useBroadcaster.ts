@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../notifications/ToastContext'
 import { createLogger } from '../../lib/logger'
 import { describeError } from '../../lib/errors'
+import { describeCloseEvent } from '../../lib/websocket'
 
 const logger = createLogger('useBroadcaster')
 
@@ -62,27 +63,6 @@ export function buildSignalingUrl(room: string, peerId: string) {
   }
 
   return `${wsProtocol}://${hostname}:${port}/ws?${query}`
-}
-
-function describeCloseEvent(event: CloseEvent): string {
-  if (!event) {
-    return ''
-  }
-
-  if (event.reason) {
-    return `${event.reason} (code: ${event.code})`
-  }
-
-  switch (event.code) {
-    case 1000:
-      return '正常に切断されました (code: 1000)'
-    case 1001:
-      return '相手側によって切断されました (code: 1001)'
-    case 1006:
-      return 'ネットワークまたはサーバーとの通信が途絶しました (code: 1006)'
-    default:
-      return `接続が終了しました (code: ${event.code})`
-  }
 }
 
 export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroadcasterResult {

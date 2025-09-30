@@ -2,32 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../notifications/ToastContext'
 import { createLogger } from '../../lib/logger'
 import { describeError } from '../../lib/errors'
+import { describeCloseEvent } from '../../lib/websocket'
 import { buildSignalingUrl } from '../broadcast/useBroadcaster'
 
 const logger = createLogger('useViewer')
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
-
-function describeCloseEvent(event: CloseEvent): string {
-  if (!event) {
-    return ''
-  }
-
-  if (event.reason) {
-    return `${event.reason} (code: ${event.code})`
-  }
-
-  switch (event.code) {
-    case 1000:
-      return '正常に切断されました (code: 1000)'
-    case 1001:
-      return '配信者が接続を終了しました (code: 1001)'
-    case 1006:
-      return 'ネットワークまたはサーバーとの通信が途絶しました (code: 1006)'
-    default:
-      return `接続が終了しました (code: ${event.code})`
-  }
-}
 
 type ViewerPhase = 'idle' | 'connecting' | 'waiting-offer' | 'answering' | 'watching'
 
@@ -456,7 +436,9 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       if (event.code === 1000 && event.reason === 'viewer disconnected') {
         safeSetStatus('視聴を終了しました')
       } else {
-        const detail = describeCloseEvent(event)
+        const detail = describeCloseEvent(event, {
+          1001: '配信者が接続を終了しました (code: 1001)',
+        })
         logger.warn('Signaling socket closed', event.code, event.reason)
         reportWarning('シグナリング接続が終了しました', detail)
         safeSetStatus('シグナリング接続が終了しました')
