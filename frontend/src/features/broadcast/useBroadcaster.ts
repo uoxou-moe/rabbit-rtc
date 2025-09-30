@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useToast } from '../notifications/ToastContext'
+import { createLogger } from '../../lib/logger'
+import { describeError } from '../../lib/errors'
 
-const DEBUG = import.meta.env.DEV
-
-const debugLog = (...args: unknown[]) => {
-  if (!DEBUG) {
-    return
-  }
-  console.info('[useBroadcaster]', ...args)
-}
+const logger = createLogger('useBroadcaster')
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
 
@@ -68,6 +64,27 @@ export function buildSignalingUrl(room: string, peerId: string) {
   return `${wsProtocol}://${hostname}:${port}/ws?${query}`
 }
 
+function describeCloseEvent(event: CloseEvent): string {
+  if (!event) {
+    return ''
+  }
+
+  if (event.reason) {
+    return `${event.reason} (code: ${event.code})`
+  }
+
+  switch (event.code) {
+    case 1000:
+      return '正常に切断されました (code: 1000)'
+    case 1001:
+      return '相手側によって切断されました (code: 1001)'
+    case 1006:
+      return 'ネットワークまたはサーバーとの通信が途絶しました (code: 1006)'
+    default:
+      return `接続が終了しました (code: ${event.code})`
+  }
+}
+
 export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroadcasterResult {
   const [phase, setPhase] = useState<BroadcastPhase>('idle')
   const [status, setStatus] = useState('準備待ち')
@@ -77,13 +94,31 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
 
+  const { notify } = useToast()
+
+  const showError = useCallback(
+    (message: string, err?: unknown) => {
+      setLastError(message)
+      const detail = err ? describeError(err) : undefined
+      notify({ type: 'error', message, description: detail })
+    },
+    [notify],
+  )
+
+  const showWarning = useCallback(
+    (message: string, detail?: string) => {
+      notify({ type: 'warning', message, description: detail })
+    },
+    [notify],
+  )
+
   const streamRef = useRef<MediaStream | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const connectionsRef = useRef(new Map<string, RTCPeerConnection>())
   const unmountedRef = useRef(false)
 
   const resetViewers = useCallback(() => {
-    debugLog('reset viewers')
+    logger.debug('reset viewers')
     connectionsRef.current.forEach((pc) => {
       pc.onicecandidate = null
       pc.onconnectionstatechange = null
@@ -99,7 +134,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       socket &&
       (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
     ) {
-      debugLog('closing socket', socket.readyState)
+      logger.debug('closing socket', socket.readyState)
       socket.close(1000, 'broadcast finished')
     }
     socketRef.current = null
@@ -110,7 +145,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
     if (!stream) {
       return
     }
-    debugLog('stopping local media tracks')
+    logger.debug('stopping local media tracks')
     stream.getTracks().forEach((track) => {
       track.stop()
     })
@@ -119,7 +154,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
   }, [])
 
   const stop = useCallback(() => {
-    debugLog('stop invoked')
+    logger.debug('stop invoked')
     resetViewers()
     closeSocket()
     stopTracks()
@@ -129,7 +164,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
 
   const updateViewerState = useCallback(
     (peer: string, connectionState?: RTCPeerConnectionState) => {
-      debugLog('viewer state update', peer, connectionState)
+      logger.debug('viewer state update', peer, connectionState)
       setViewers((current) => {
         const others = current.filter((entry) => entry.peerId !== peer)
         if (!connectionState) {
@@ -144,10 +179,10 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
   const sendMessage = useCallback((message: Record<string, unknown>) => {
     const socket = socketRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn('Signaling socket is not open; skipping message', message)
+      logger.warn('Signaling socket is not open; skipping message', message)
       return
     }
-    debugLog('send message', message)
+    logger.debug('send message', message)
     socket.send(JSON.stringify(message))
   }, [])
 
@@ -161,15 +196,15 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
         connectionsRef.current.delete(viewerId)
       }
       updateViewerState(viewerId)
-      debugLog('viewer removed', viewerId, reason)
-      console.info(`viewer ${viewerId} disconnected (${reason})`)
+      logger.debug('viewer removed', viewerId, reason)
+      logger.info(`viewer ${viewerId} disconnected (${reason})`)
     },
     [updateViewerState],
   )
 
   const handleViewerAnswer = useCallback(
     async (viewerId: string, payload: unknown) => {
-      debugLog('viewer answer received', viewerId)
+      logger.debug('viewer answer received', viewerId)
       const pc = connectionsRef.current.get(viewerId)
       if (!pc || !payload || typeof payload !== 'object') {
         return
@@ -182,37 +217,40 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
 
       try {
         await pc.setRemoteDescription(description)
-        debugLog('remote description applied', viewerId)
+        logger.debug('remote description applied', viewerId)
       } catch (error) {
-        console.error('Failed to set remote description', error)
-        setLastError('視聴者からの応答を適用できませんでした')
+        logger.error('Failed to set remote description', error)
+        showError('視聴者からの応答を適用できませんでした', error)
         removeViewer(viewerId, 'setRemoteDescription failed')
       }
     },
-    [removeViewer],
+    [removeViewer, showError],
   )
 
-  const handleViewerIce = useCallback(async (viewerId: string, payload: unknown) => {
-    debugLog('ice candidate received', viewerId, payload)
-    const pc = connectionsRef.current.get(viewerId)
-    if (!pc || !payload || typeof payload !== 'object') {
-      return
-    }
+  const handleViewerIce = useCallback(
+    async (viewerId: string, payload: unknown) => {
+      logger.debug('ice candidate received', viewerId, payload)
+      const pc = connectionsRef.current.get(viewerId)
+      if (!pc || !payload || typeof payload !== 'object') {
+        return
+      }
 
-    const candidate = payload as RTCIceCandidateInit
-    try {
-      await pc.addIceCandidate(candidate)
-      debugLog('ice candidate applied', viewerId)
-    } catch (error) {
-      console.error('Failed to add ICE candidate', error)
-      setLastError('ICE candidate の適用に失敗しました')
-    }
-  }, [])
+      const candidate = payload as RTCIceCandidateInit
+      try {
+        await pc.addIceCandidate(candidate)
+        logger.debug('ice candidate applied', viewerId)
+      } catch (error) {
+        logger.error('Failed to add ICE candidate', error)
+        showError('ICE candidate の適用に失敗しました', error)
+      }
+    },
+    [showError],
+  )
 
   const createPeerConnection = useCallback(
     (viewerId: string) => {
       if (!streamRef.current) {
-        setLastError('ローカルメディアが利用できません')
+        showError('ローカルメディアが利用できません')
         return null
       }
 
@@ -224,7 +262,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
       connectionsRef.current.set(viewerId, pc)
       updateViewerState(viewerId, pc.connectionState)
-      debugLog('created peer connection', viewerId)
+      logger.debug('created peer connection', viewerId)
 
       streamRef.current.getTracks().forEach((track) => {
         pc?.addTrack(track, streamRef.current as MediaStream)
@@ -234,7 +272,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
         if (!event.candidate) {
           return
         }
-        debugLog('local ice candidate', viewerId, event.candidate)
+        logger.debug('local ice candidate', viewerId, event.candidate)
         sendMessage({ type: 'ice', to: viewerId, payload: event.candidate })
       }
 
@@ -242,7 +280,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
         if (!pc) {
           return
         }
-        debugLog('connection state change', viewerId, pc.connectionState)
+        logger.debug('connection state change', viewerId, pc.connectionState)
         updateViewerState(viewerId, pc.connectionState)
         if (
           pc.connectionState === 'failed' ||
@@ -255,12 +293,12 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
 
       return pc
     },
-    [removeViewer, sendMessage, updateViewerState],
+    [removeViewer, sendMessage, showError, updateViewerState],
   )
 
   const handleViewerJoin = useCallback(
     async (viewerId: string) => {
-      debugLog('viewer join requested', viewerId)
+      logger.debug('viewer join requested', viewerId)
       const pc = createPeerConnection(viewerId)
       if (!pc) {
         return
@@ -271,27 +309,27 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
           offerToReceiveAudio: false,
           offerToReceiveVideo: false,
         })
-        debugLog('local offer', viewerId)
+        logger.debug('local offer', viewerId)
         await pc.setLocalDescription(offer)
         sendMessage({ type: 'offer', to: viewerId, payload: offer })
         setStatus('視聴者にオファーを送信しました')
       } catch (error) {
-        console.error('Failed to create offer', error)
-        setLastError('オファー生成に失敗しました')
+        logger.error('Failed to create offer', error)
+        showError('オファー生成に失敗しました', error)
         removeViewer(viewerId, 'createOffer failed')
       }
     },
-    [createPeerConnection, removeViewer, sendMessage],
+    [createPeerConnection, removeViewer, sendMessage, showError],
   )
 
   const handleMessage = useCallback(
     (raw: string) => {
-      debugLog('message received', raw)
+      logger.debug('message received', raw)
       let message: SignalingMessage
       try {
         message = JSON.parse(raw) as SignalingMessage
       } catch (error) {
-        console.warn('Received malformed signaling payload', raw, error)
+        logger.warn('Received malformed signaling payload', raw, error)
         return
       }
 
@@ -299,26 +337,26 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       switch (message.type) {
         case 'viewer-ready':
         case 'viewer-join':
-          debugLog('viewer ready/join', sender)
+          logger.debug('viewer ready/join', sender)
           if (sender) {
             void handleViewerJoin(sender)
           }
           break
         case 'answer':
-          debugLog('answer message', sender)
+          logger.debug('answer message', sender)
           if (sender) {
             void handleViewerAnswer(sender, message.payload)
           }
           break
         case 'ice':
-          debugLog('ice message', sender)
+          logger.debug('ice message', sender)
           if (sender) {
             void handleViewerIce(sender, message.payload)
           }
           break
         case 'viewer-left':
         case 'bye':
-          debugLog('viewer left message', sender)
+          logger.debug('viewer left message', sender)
           if (sender) {
             removeViewer(sender, 'viewer requested disconnect')
           }
@@ -340,26 +378,27 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
             }
           }
 
-          setLastError(description ?? 'シグナリングサーバからエラーを受信しました')
+          showError(description ?? 'シグナリングサーバからエラーを受信しました')
           break
         }
         default:
-          debugLog('unsupported message', message.type)
-          console.info('Received unsupported signaling message', message)
+          logger.debug('unsupported message', message.type)
+          logger.info('Received unsupported signaling message', message)
       }
     },
-    [handleViewerAnswer, handleViewerIce, handleViewerJoin, removeViewer],
+    [handleViewerAnswer, handleViewerIce, handleViewerJoin, removeViewer, showError],
   )
 
   const start = useCallback(async () => {
     if (phase !== 'idle') {
-      debugLog('start skipped, phase', phase)
+      logger.debug('start skipped, phase', phase)
       return
     }
     if (!room || room.trim().length === 0 || !peerId || peerId.trim().length === 0) {
       const message = 'ルームIDとピアIDを入力してください'
-      debugLog('start aborted due to missing identifiers', room, peerId)
+      logger.debug('start aborted due to missing identifiers', room, peerId)
       setLastError(message)
+      showWarning(message)
       setStatus(message)
       setPhase('idle')
       return
@@ -370,7 +409,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
     setLastError(null)
 
     try {
-      debugLog('requesting media devices')
+      logger.debug('requesting media devices')
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       streamRef.current = stream
       setLocalStream(stream)
@@ -379,8 +418,8 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
       setAudioEnabled(audioTrack ? audioTrack.enabled : false)
       setVideoEnabled(videoTrack ? videoTrack.enabled : false)
     } catch (error) {
-      console.error('Failed to acquire media devices', error)
-      setLastError('カメラ・マイクの取得に失敗しました。ブラウザの権限設定を確認してください。')
+      logger.error('Failed to acquire media devices', error)
+      showError('カメラ・マイクの取得に失敗しました。ブラウザの権限設定を確認してください。', error)
       setPhase('idle')
       setStatus('メディアデバイスを利用できません')
       stopTracks()
@@ -391,7 +430,7 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
     setStatus('シグナリングサーバへ接続中...')
 
     const url = buildSignalingUrl(room, peerId)
-    debugLog('connecting to signaling server', url)
+    logger.debug('connecting to signaling server', url)
     const socket = new WebSocket(url)
     socketRef.current = socket
 
@@ -400,34 +439,52 @@ export function useBroadcaster({ room, peerId }: UseBroadcasterOptions): UseBroa
         socket.close()
         return
       }
-      debugLog('socket opened')
+      logger.debug('socket opened')
       setPhase('ready')
       setStatus('接続しました。視聴者からの参加を待機しています。')
       sendMessage({ type: 'broadcaster-ready' })
     }
 
     socket.onmessage = (event) => {
-      debugLog('socket message', event.data)
+      logger.debug('socket message', event.data)
       handleMessage(event.data)
     }
 
     socket.onerror = (event) => {
-      console.error('Signaling socket error', event)
-      debugLog('socket error', event)
-      setLastError('シグナリング通信でエラーが発生しました')
+      logger.error('Signaling socket error', event)
+      showError('シグナリング通信でエラーが発生しました', event)
     }
 
-    socket.onclose = () => {
-      debugLog('socket closed')
+    socket.onclose = (event) => {
+      logger.debug('socket closed', event.code, event.reason)
       if (unmountedRef.current) {
         return
       }
       resetViewers()
       socketRef.current = null
-      setStatus('シグナリング接続が切断されました')
+
+      if (event.code === 1000 && event.reason === 'broadcast finished') {
+        setStatus('配信を終了しました')
+      } else {
+        const detail = describeCloseEvent(event)
+        logger.warn('Signaling socket closed', event.code, event.reason)
+        showWarning('シグナリング接続が切断されました', detail)
+        setStatus('シグナリング接続が切断されました')
+      }
+
       setPhase('idle')
     }
-  }, [handleMessage, peerId, phase, room, resetViewers, sendMessage, stopTracks])
+  }, [
+    handleMessage,
+    peerId,
+    phase,
+    room,
+    resetViewers,
+    sendMessage,
+    showError,
+    showWarning,
+    stopTracks,
+  ])
 
   const toggleAudio = useCallback(() => {
     const stream = streamRef.current

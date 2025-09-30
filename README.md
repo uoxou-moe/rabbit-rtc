@@ -47,12 +47,15 @@ make backend/run   # Go サーバ起動 (http://localhost:8080)
 `make dev` で開発サーバが起動し、[http://localhost:5173](http://localhost:5173) からアクセスできます。
 配信者用UIは [http://localhost:5173/broadcast](http://localhost:5173/broadcast) で利用できます。
 バックエンドをプロキシせず別ポートで動かす場合は `VITE_SIGNALING_WS_URL` を設定してシグナリング先を上書きしてください（例: `VITE_SIGNALING_WS_URL=ws://localhost:8080/ws npm run dev`）。未設定時は開発環境では `ws://<host>:8080/ws`、本番ではページのホストをそのまま利用します。
+コンソールログは `VITE_LOG_LEVEL` (`debug`/`info`/`warn`/`error`) で制御でき、開発時は `debug` がデフォルトです。
 CI と同じチェックは `make lint` / `make format` / `make test` で再現できます。
 
 ## バックエンド開発 (Go)
 ヘルスチェックエンドポイント付きの HTTP サーバを `make backend/run` で起動できます。環境変数 `PORT` でポート指定 (`8080` がデフォルト)、ヘルスチェックは `GET /healthz` で確認します。
 簡易的なシグナリング検証クライアントは `go run ./cmd/signaling-client -room sample -peer broadcaster` で起動できます（`backend` ディレクトリ配下）。
 WebSocket シグナリングは `SIGNALING_ALLOWED_ORIGINS` 環境変数（カンマ区切り）で許可する Origin を設定できます。未設定時は `localhost` / `127.0.0.1` のみ許可されます。
+
+ログ出力は `LOG_LEVEL` (`debug`/`info`/`warn`/`error`) と `LOG_FORMAT` (`text` or `json`) で制御できます。詳細なスタックトレースが必要な場合は `LOG_ADD_SOURCE=true` を設定してください。
 
 [![Frontend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/frontend.yml)
 [![Backend](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml/badge.svg)](https://github.com/uoxou-moe/rabbit-rtc/actions/workflows/backend.yml)
