@@ -1,5 +1,5 @@
 export function describeError(error: unknown): string {
-  if (!error) {
+  if (error == null) {
     return ''
   }
 
