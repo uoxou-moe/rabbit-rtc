@@ -1,6 +1,9 @@
 export type CloseCodeMessages = Partial<Record<number, string>>
 
-export function describeCloseEvent(event: CloseEvent | null | undefined, overrides?: CloseCodeMessages): string {
+export function describeCloseEvent(
+  event: CloseEvent | null | undefined,
+  overrides?: CloseCodeMessages,
+): string {
   if (!event) {
     return ''
   }
