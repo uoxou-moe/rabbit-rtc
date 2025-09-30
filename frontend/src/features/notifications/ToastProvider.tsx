@@ -17,8 +17,18 @@ type ToastEntry = Required<Pick<ToastInput, 'message'>> & {
 const DEFAULT_DURATION = 5000
 const ERROR_DURATION = 8000
 
+let fallbackCounter = 0
+
 function generateId() {
-  return `toast_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `toast_${crypto.randomUUID()}`
+  }
+
+  fallbackCounter += 1
+  const timestamp = Date.now().toString(36)
+  const counter = fallbackCounter.toString(36)
+  const randomSuffix = Math.random().toString(36).slice(2, 8)
+  return `toast_${timestamp}_${counter}_${randomSuffix}`
 }
 
 function normalizeToast(input: ToastInput): ToastEntry {
