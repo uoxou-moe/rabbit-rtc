@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
 import './App.css'
 import BroadcastPage from './features/broadcast/BroadcastPage'
 import ViewerPage from './features/viewer/ViewerPage'
+import { ToastProvider } from './features/notifications/ToastProvider'
 
 function NotFound() {
   return (
@@ -19,14 +20,16 @@ function NotFound() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/broadcast" replace />} />
-        <Route path="/broadcast" element={<BroadcastPage />} />
-        <Route path="/watch" element={<ViewerPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/broadcast" replace />} />
+          <Route path="/broadcast" element={<BroadcastPage />} />
+          <Route path="/watch" element={<ViewerPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   )
 }
 

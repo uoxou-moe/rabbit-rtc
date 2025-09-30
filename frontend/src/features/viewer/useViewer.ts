@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useToast } from '../notifications/ToastContext'
+import { createLogger } from '../../lib/logger'
+import { describeError } from '../../lib/errors'
+import { describeCloseEvent } from '../../lib/websocket'
 import { buildSignalingUrl } from '../broadcast/useBroadcaster'
 
-const DEBUG = import.meta.env.DEV
-
-const debugLog = (...args: unknown[]) => {
-  if (!DEBUG) {
-    return
-  }
-  console.info('[useViewer]', ...args)
-}
+const logger = createLogger('useViewer')
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
 
@@ -85,6 +82,24 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     setRemoteStream(stream)
   }, [])
 
+  const { notify } = useToast()
+
+  const reportError = useCallback(
+    (message: string, err?: unknown) => {
+      safeSetLastError(message)
+      const detail = err ? describeError(err) : undefined
+      notify({ type: 'error', message, description: detail })
+    },
+    [notify, safeSetLastError],
+  )
+
+  const reportWarning = useCallback(
+    (message: string, detail?: string) => {
+      notify({ type: 'warning', message, description: detail })
+    },
+    [notify],
+  )
+
   const closeSocket = useCallback(() => {
     const socket = socketRef.current
     if (!socket) {
@@ -97,7 +112,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     socket.onclose = null
 
     if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-      debugLog('closing socket')
+      logger.debug('closing socket')
       socket.close(1000, 'viewer disconnected')
     }
 
@@ -107,14 +122,14 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
   const cleanupPeerConnection = useCallback(() => {
     const pc = peerConnectionRef.current
     if (pc) {
-      debugLog('cleaning up peer connection')
+      logger.debug('cleaning up peer connection')
       pc.onicecandidate = null
       pc.ontrack = null
       pc.onconnectionstatechange = null
       try {
         pc.close()
       } catch (error) {
-        debugLog('peer connection close error', error)
+        logger.debug('peer connection close error', error)
       }
     }
 
@@ -127,7 +142,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
         try {
           track.stop()
         } catch (error) {
-          debugLog('failed to stop remote track', error)
+          logger.debug('failed to stop remote track', error)
         }
       })
     }
@@ -139,21 +154,24 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
 
   const sendMessage = useCallback((message: Record<string, unknown>) => {
     const socket = socketRef.current
+    const typeCandidate = (message as { type?: unknown }).type
+    const messageType = typeof typeCandidate === 'string' ? typeCandidate : 'unknown'
+
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      debugLog('signaling socket is not open; skipping message', message)
+      logger.debug('signaling socket is not open; skipping message', { type: messageType })
       return
     }
 
     try {
       socket.send(JSON.stringify(message))
-      debugLog('sent message', message)
+      logger.debug('sent signaling message', { type: messageType })
     } catch (error) {
-      console.warn('Failed to send signaling message', error)
+      logger.warn('Failed to send signaling message', error)
     }
   }, [])
 
   const requestOffer = useCallback(() => {
-    debugLog('requesting offer from broadcaster')
+    logger.debug('requesting offer from broadcaster')
     sendMessage({ type: 'viewer-ready' })
   }, [sendMessage])
 
@@ -163,12 +181,12 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       return pc
     }
 
-    debugLog('creating peer connection')
+    logger.debug('creating peer connection')
     pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
     peerConnectionRef.current = pc
 
     pc.ontrack = (event) => {
-      debugLog('remote track received', event.streams)
+      logger.debug('remote track received', event.streams)
       if (event.streams && event.streams[0]) {
         streamRef.current = event.streams[0]
         safeSetRemoteStream(event.streams[0])
@@ -189,16 +207,16 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       }
       const broadcaster = broadcasterRef.current
       if (!broadcaster) {
-        debugLog('no broadcaster to send ice candidate')
+        logger.debug('no broadcaster to send ice candidate')
         return
       }
-      debugLog('local ice candidate', event.candidate)
+      logger.debug('local ice candidate', event.candidate)
       sendMessage({ type: 'ice', to: broadcaster, payload: event.candidate })
     }
 
     pc.onconnectionstatechange = () => {
       const state = pc?.connectionState ?? null
-      debugLog('connection state changed', state)
+      logger.debug('connection state changed', state)
       if (state) {
         safeSetConnectionState(state)
       } else {
@@ -213,7 +231,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
         safeSetPhase('watching')
         safeSetStatus('配信を視聴しています')
       } else if (state === 'failed') {
-        safeSetLastError('ピア接続が失敗しました')
+        reportError('ピア接続が失敗しました')
         safeSetStatus('ピア接続が失敗しました')
         cleanupPeerConnection()
         safeSetPhase('waiting-offer')
@@ -230,7 +248,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
   }, [
     cleanupPeerConnection,
     safeSetConnectionState,
-    safeSetLastError,
+    reportError,
     safeSetPhase,
     safeSetRemoteStream,
     safeSetStatus,
@@ -269,8 +287,8 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
         sendMessage({ type: 'answer', to: sender, payload: answer })
         safeSetStatus('アンサーを送信しました。接続を確立しています...')
       } catch (error) {
-        console.error('Failed to handle offer', error)
-        safeSetLastError('オファーの処理中にエラーが発生しました')
+        logger.error('Failed to handle offer', error)
+        reportError('オファーの処理中にエラーが発生しました', error)
         safeSetStatus('オファーの処理に失敗しました')
         cleanupPeerConnection()
         safeSetPhase('waiting-offer')
@@ -279,7 +297,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     [
       cleanupPeerConnection,
       createPeerConnection,
-      safeSetLastError,
+      reportError,
       safeSetPhase,
       safeSetStatus,
       sendMessage,
@@ -296,15 +314,15 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
       try {
         await pc.addIceCandidate(payload as RTCIceCandidateInit)
       } catch (error) {
-        console.error('Failed to add remote ICE candidate', error)
-        safeSetLastError('リモート ICE candidate の適用に失敗しました')
+        logger.error('Failed to add remote ICE candidate', error)
+        reportError('リモート ICE candidate の適用に失敗しました', error)
       }
     },
-    [safeSetLastError],
+    [reportError],
   )
 
   const handleBroadcasterLeft = useCallback(() => {
-    debugLog('broadcaster left or ended')
+    logger.debug('broadcaster left or ended')
     cleanupPeerConnection()
     safeSetStatus('配信が終了しました。再開を待機しています...')
     safeSetPhase('waiting-offer')
@@ -312,14 +330,17 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
 
   const handleMessage = useCallback(
     (raw: string) => {
-      debugLog('message received', raw)
       let message: SignalingMessage
       try {
         message = JSON.parse(raw) as SignalingMessage
       } catch (error) {
-        console.warn('Received malformed signaling payload', raw, error)
+        const fallbackInfo = typeof raw === 'string' ? { length: raw.length } : { length: 0 }
+        logger.warn('Received malformed signaling payload', fallbackInfo, error)
         return
       }
+
+      const messageType = typeof message.type === 'string' ? message.type : 'unknown'
+      logger.debug('message received', { type: messageType })
 
       const sender = message.from
       switch (message.type) {
@@ -341,36 +362,29 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
           break
         case 'error': {
           if (typeof message.message === 'string' && message.message.length > 0) {
-            safeSetLastError(message.message)
+            reportError(message.message)
             return
           }
           if (message.payload && typeof message.payload === 'object') {
             const payload = message.payload as { message?: unknown }
             if (typeof payload.message === 'string' && payload.message.length > 0) {
-              safeSetLastError(payload.message)
+              reportError(payload.message)
               return
             }
           }
-          safeSetLastError('シグナリングサーバからエラーを受信しました')
+          reportError('シグナリングサーバからエラーを受信しました')
           break
         }
         default:
-          debugLog('unsupported message type', message.type)
+          logger.debug('unsupported message type', message.type)
       }
     },
-    [
-      handleBroadcasterLeft,
-      handleOffer,
-      handleRemoteIce,
-      requestOffer,
-      safeSetLastError,
-      safeSetStatus,
-    ],
+    [handleBroadcasterLeft, handleOffer, handleRemoteIce, requestOffer, reportError, safeSetStatus],
   )
 
   const connect = useCallback(() => {
     if (phase !== 'idle') {
-      debugLog('connect skipped due to phase', phase)
+      logger.debug('connect skipped due to phase', phase)
       return
     }
 
@@ -381,6 +395,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     if (trimmedRoom.length === 0 || trimmedPeer.length === 0) {
       const message = 'ルームIDとピアIDを入力してください'
       safeSetLastError(message)
+      reportWarning(message)
       safeSetStatus(message)
       return
     }
@@ -391,13 +406,13 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     safeSetConnectionState(null)
 
     const url = buildSignalingUrl(trimmedRoom, trimmedPeer)
-    debugLog('connecting to signaling server', url)
+    logger.debug('connecting to signaling server', url)
 
     const socket = new WebSocket(url)
     socketRef.current = socket
 
     socket.onopen = () => {
-      debugLog('socket opened')
+      logger.debug('socket opened')
       if (unmountedRef.current) {
         socket.close()
         return
@@ -412,25 +427,36 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
     }
 
     socket.onerror = (event) => {
-      console.error('Signaling socket error', event)
-      safeSetLastError('シグナリング通信でエラーが発生しました')
+      logger.error('Signaling socket error', event)
+      reportError('シグナリング通信でエラーが発生しました', event)
     }
 
-    socket.onclose = () => {
-      debugLog('socket closed')
+    socket.onclose = (event) => {
+      logger.debug('socket closed', event.code, event.reason)
       cleanupPeerConnection()
       socketRef.current = null
       if (unmountedRef.current) {
         return
       }
       safeSetPhase('idle')
-      safeSetStatus('シグナリング接続が終了しました')
+      if (event.code === 1000 && event.reason === 'viewer disconnected') {
+        safeSetStatus('視聴を終了しました')
+      } else {
+        const detail = describeCloseEvent(event, {
+          1001: '配信者が接続を終了しました (code: 1001)',
+        })
+        logger.warn('Signaling socket closed', event.code, event.reason)
+        reportWarning('シグナリング接続が終了しました', detail)
+        safeSetStatus('シグナリング接続が終了しました')
+      }
     }
   }, [
     cleanupPeerConnection,
     handleMessage,
     phase,
     peerId,
+    reportError,
+    reportWarning,
     requestOffer,
     room,
     safeSetConnectionState,
@@ -440,7 +466,7 @@ export function useViewer({ room, peerId }: UseViewerOptions): UseViewerResult {
   ])
 
   const disconnect = useCallback(() => {
-    debugLog('disconnect invoked')
+    logger.debug('disconnect invoked')
     const socket = socketRef.current
     if (socket && socket.readyState === WebSocket.OPEN) {
       sendMessage({ type: 'viewer-left' })

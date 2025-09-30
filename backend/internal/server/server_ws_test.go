@@ -15,7 +15,7 @@ import (
 
 func TestWebSocketRequiresQueryParams(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "")
-	h := NewHandler()
+	h := NewHandler(HandlerConfig{Logger: newTestLogger()})
 
 	req := httptest.NewRequest(http.MethodGet, signalingPath, nil)
 	res := httptest.NewRecorder()
@@ -29,7 +29,7 @@ func TestWebSocketRequiresQueryParams(t *testing.T) {
 
 func TestWebSocketRejectsNonGet(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "")
-	h := NewHandler()
+	h := NewHandler(HandlerConfig{Logger: newTestLogger()})
 
 	req := httptest.NewRequest(http.MethodPost, signalingPath+"?room=test&peer=alice", nil)
 	res := httptest.NewRecorder()
@@ -43,7 +43,7 @@ func TestWebSocketRejectsNonGet(t *testing.T) {
 
 func TestWebSocketSignalRouting(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "")
-	srv := httptest.NewServer(NewHandler())
+	srv := httptest.NewServer(NewHandler(HandlerConfig{Logger: newTestLogger()}))
 	t.Cleanup(srv.Close)
 
 	alice := dialWebSocket(t, srv.URL, "room1", "alice")
@@ -94,7 +94,7 @@ func TestWebSocketSignalRouting(t *testing.T) {
 
 func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "")
-	srv := httptest.NewServer(NewHandler())
+	srv := httptest.NewServer(NewHandler(HandlerConfig{Logger: newTestLogger()}))
 	t.Cleanup(srv.Close)
 
 	alice := dialWebSocket(t, srv.URL, "room1", "alice")
@@ -132,7 +132,7 @@ func TestWebSocketUnknownTargetSendsError(t *testing.T) {
 
 func TestWebSocketDispatchDuringDisconnectDoesNotPanic(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "")
-	srv := httptest.NewServer(NewHandler())
+	srv := httptest.NewServer(NewHandler(HandlerConfig{Logger: newTestLogger()}))
 	t.Cleanup(srv.Close)
 
 	alice := dialWebSocket(t, srv.URL, "race-room", "alice")
@@ -166,7 +166,7 @@ func TestWebSocketDispatchDuringDisconnectDoesNotPanic(t *testing.T) {
 
 func TestWebSocketRejectsDisallowedOrigin(t *testing.T) {
 	t.Setenv(allowedOriginsEnv, "https://allowed.example")
-	srv := httptest.NewServer(NewHandler())
+	srv := httptest.NewServer(NewHandler(HandlerConfig{Logger: newTestLogger()}))
 	t.Cleanup(srv.Close)
 
 	u, err := url.Parse(srv.URL)

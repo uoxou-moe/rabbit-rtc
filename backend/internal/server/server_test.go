@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +14,7 @@ type health struct {
 }
 
 func TestHealthzEndpoint(t *testing.T) {
-	handler := NewHandler()
+	handler := NewHandler(HandlerConfig{Logger: newTestLogger()})
 
 	req := httptest.NewRequest(http.MethodGet, healthzPath, nil)
 	res := httptest.NewRecorder()
@@ -38,7 +40,7 @@ func TestHealthzEndpoint(t *testing.T) {
 }
 
 func TestHealthzMethodNotAllowed(t *testing.T) {
-	handler := NewHandler()
+	handler := NewHandler(HandlerConfig{Logger: newTestLogger()})
 
 	req := httptest.NewRequest(http.MethodPost, healthzPath, nil)
 	res := httptest.NewRecorder()
@@ -48,4 +50,8 @@ func TestHealthzMethodNotAllowed(t *testing.T) {
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status %d, got %d", http.StatusMethodNotAllowed, res.Code)
 	}
+}
+
+func newTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
